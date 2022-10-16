@@ -1,0 +1,6 @@
+msgid "fetch_data"
+msgstr "Get Data"
+
+msgid "fetch_img"
+msgstr "Fetch Image"
+ 
