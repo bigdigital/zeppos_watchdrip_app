@@ -1,5 +1,5 @@
 import { gettext as getText } from "i18n";
-import { DEFAULT_COLOR, DEFAULT_COLOR_TRANSPARENT } from "./constants";
+import {DEFAULT_COLOR, DEFAULT_COLOR_TRANSPARENT, WHITE_COLOR} from "./constants";
 import { DEVICE_WIDTH } from "./device";
 
 export const COMMON_TITLE_TEXT = {
@@ -7,7 +7,7 @@ export const COMMON_TITLE_TEXT = {
   y: px(100),
   w: px(288),
   h: px(46),
-  color: 0xffffff,
+  color: WHITE_COLOR,
   text_size: px(36),
   align_h: hmUI.align.CENTER_H,
   align_v: hmUI.align.CENTER_V,
@@ -21,12 +21,25 @@ export const DEBUG_TEXT = {
   h: 450,
   text_size: 12,
   char_space: 0,
-  color: 0xffffff,
+  color: WHITE_COLOR,
   text: "",
   text_style: hmUI.text_style.NONE,
   align_h: hmUI.align.LEFT,
   align_v: hmUI.align.TOP,
 };
+
+export const TITLE_TEXT = {
+  x: (DEVICE_WIDTH - px(288)) / 2,
+  y: px(-10),
+  w: px(288),
+  h: px(100),
+  color: WHITE_COLOR,
+  text_size: px(36),
+  align_h: hmUI.align.CENTER_H,
+  align_v: hmUI.align.CENTER_V,
+  text_style: hmUI.text_style.NONE,
+  text: "Watchdrip+"
+}
 
 export const COMMON_BUTTON_FETCH = {
   x: (DEVICE_WIDTH - px(400)) / 2,

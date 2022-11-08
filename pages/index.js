@@ -8,11 +8,17 @@ import {
   DATA_UPDATE_INTERVAL_MS,
 } from "../utils/config/constants";
 import { DEVICE_WIDTH } from "../utils/config/device";
-import { WATCHDRIP_CONFIG, WATCHDRIP_CONFIG_LAST_UPDATE, WF_INFO, WF_INFO_LAST_UPDATE } from "../utils/config/global-constants";
+import {
+  WATCHDRIP_CONFIG,
+  WATCHDRIP_CONFIG_DEFAULTS,
+  WATCHDRIP_CONFIG_LAST_UPDATE,
+  WF_INFO,
+  WF_INFO_LAST_UPDATE
+} from "../utils/config/global-constants";
 import {
   COMMON_BUTTON_FETCH,
   COMMON_BUTTON_FETCH_IMG,
-  COMMON_TITLE_TEXT,
+  COMMON_TITLE_TEXT, TITLE_TEXT,
 } from "../utils/config/styles";
 
 import * as fs from "./../shared/fs";
@@ -46,11 +52,7 @@ class Watchdrip {
     this.debug.log(page);
     this.globalNS = getGlobal();
     this.goBackType = GoBackType.NONE;
-
-    this.watchdripConfig = {
-      disableUpdates: false,
-    };
-    this.updateConfig();
+    this.readConfig();
     switch (page) {
       case "main":
         this.main_page();
@@ -72,13 +74,83 @@ class Watchdrip {
     }
   }
 
-  updateConfig() {
+
+  readConfig() {
+    var configLastUpdate = hmFS.SysProGetInt64(WATCHDRIP_CONFIG_LAST_UPDATE);
+    var configStr = hmFS.SysProGetChars(WATCHDRIP_CONFIG);
+    if (!configStr) {
+      this.watchdripConfig = WATCHDRIP_CONFIG_DEFAULTS;
+      this.saveConfig();
+    } else {
+      try {
+        this.watchdripConfig = str2json(configStr);
+      }
+      catch (e) {
+
+      }
+    }
+  }
+
+  saveConfig() {
     hmFS.SysProSetChars(WATCHDRIP_CONFIG, json2str(this.watchdripConfig));
     hmFS.SysProSetChars(WATCHDRIP_CONFIG_LAST_UPDATE, this.timeSensor.utc);
   }
 
   main_page() {
     this.debug.log("main_page");
+    hmUI.createWidget(hmUI.widget.TEXT, TITLE_TEXT)
+
+    hmUI.createWidget(hmUI.widget.SCROLL_LIST, {
+      x: px(30),
+      y: px(80),
+      w: _ - 2 * px(30),
+      h: r - px(100),
+      item_space: 10,
+      item_config: [{
+        type_id: 1,
+        item_bg_color: this.state.background,
+        item_bg_radius: 10,
+        text_view: [{
+          x: px(-100),
+          y: px(20),
+          w: px(360),
+          h: px(80),
+          key: "name",
+          color: this.state.white,
+          text_size: 30
+        }, {
+          x: px(100),
+          y: px(20),
+          w: px(360),
+          h: px(80),
+          key: "price",
+          color: this.state.white,
+          text_size: 30
+        }],
+        text_view_count: 2,
+        item_height: 130
+      }],
+      item_config_count: 1,
+      data_array: c,
+      data_count: c.length,
+      item_click_func: (t, e) => {
+        hmApp.gotoPage({
+          file: "pages/wallet",
+          param: JSON.stringify({
+            id: c[e].id,
+            name: c[e].name
+          })
+        })
+      },
+      data_type_config: [{
+        start: 0,
+        end: 1,
+        type_id: 1
+      }],
+      data_type_config_count: 1
+    })
+
+
     hmUI.createWidget(hmUI.widget.BUTTON, {
       ...COMMON_BUTTON_FETCH,
       click_func: (button_widget) => {
@@ -103,7 +175,7 @@ class Watchdrip {
   fetchInfo() {
     this.debug.log("fetchInfo");
 
-    this.startAppUpdate();
+   // this.startAppUpdate();
 
     if (messageBuilder.connectStatus() == false) {
       this.debug.log("No bt connection");

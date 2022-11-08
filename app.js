@@ -10,11 +10,11 @@ App({
   },
   onCreate(options) {
     console.log("app on create invoke");
-    messageBuilder.connect();
+    //messageBuilder.connect();
   },
 
   onDestroy(options) {
     console.log("app on destroy invoke");
-    messageBuilder.disConnect();
+    //messageBuilder.disConnect();
   },
 });
