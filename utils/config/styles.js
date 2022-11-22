@@ -31,9 +31,9 @@ export const DEBUG_TEXT = {
 
 export const TITLE_TEXT = {
   x: (DEVICE_WIDTH - px(288)) / 2,
-  y: px(10),
+  y: px(15),
   w: px(288),
-  h: px(36),
+  h: px(42),
   color: Colors.white,
   text_size: px(36),
   align_h: hmUI.align.CENTER_H,
@@ -46,7 +46,7 @@ export const MESSAGE_TEXT = {
   x: (DEVICE_WIDTH - px(350)) / 2,
   y: px(90),
   w: px(350),
-  h: px(28),
+  h: px(32),
   color: Colors.white,
   text_size: px(28),
   align_h: hmUI.align.CENTER_H,
@@ -58,7 +58,7 @@ export const MESSAGE_TEXT2 = {
   x: (DEVICE_WIDTH - px(350)) / 2,
   y: px(125),
   w: px(350),
-  h: px(28),
+  h: px(32),
   color: Colors.white,
   text_size: px(28),
   align_h: hmUI.align.CENTER_H,
@@ -66,12 +66,11 @@ export const MESSAGE_TEXT2 = {
   text_style: hmUI.text_style.NONE,
 }
 
-
 export const MESSAGE_TEXT3 = {
   x: (DEVICE_WIDTH - px(350)) / 2,
   y: px(160),
   w: px(350),
-  h: px(28),
+  h: px(32),
   color: Colors.white,
   text_size: px(28),
   align_h: hmUI.align.CENTER_H,
@@ -83,7 +82,7 @@ export const VERSION_TEXT = {
   x: (DEVICE_WIDTH - px(288)) / 2,
   y: DEVICE_HEIGHT - px(40),
   w: px(288),
-  h: px(25),
+  h: px(28),
   color: Colors.white,
   text_size: px(25),
   align_h: hmUI.align.CENTER_H,
@@ -116,24 +115,23 @@ export const COMMON_BUTTON_FETCH_IMG = {
   text: getText("fetch_img"),
 };
 
-
 export const BG_VALUE_TEXT = {
-  x: px(50),
-  y: px(95),
-  w: px(150),
-  h: px(60),
+  x: (DEVICE_WIDTH - px(250)) / 2,
+  y: px(80),
+  w: px(250),
+  h: px(85),
   color: Colors.white,
-  text_size: px(60),
-  align_h: hmUI.align.RIGHT,
+  text_size: px(75),
+  align_h: hmUI.align.CENTER_H,
   align_v: hmUI.align.CENTER_V,
   text_style: hmUI.text_style.NONE,
 };
 
 export const BG_TIME_TEXT = {
-  x: px(285),
-  y: px(128),
+  x: DEVICE_WIDTH/2 + px(90),
+  y: px(126),
   w: px(200),
-  h: px(25),
+  h: px(32),
   color: Colors.white,
   text_size: px(25),
   align_h: hmUI.align.LEFT,
@@ -142,27 +140,29 @@ export const BG_TIME_TEXT = {
 };
 
 export const BG_DELTA_TEXT = {
-  x: px(285),
-  y: px(88),
+  x: (DEVICE_WIDTH - px(200)) / 2,
+  y: px(230),
   w: px(200),
-  h: px(30),
-  color: Colors.white,
+  h: px(36),
+  color: Colors.defaultTransparent,
   text_size: px(28),
-  align_h: hmUI.align.LEFT,
+  align_h: hmUI.align.CENTER_H,
   align_v: hmUI.align.CENTER_V,
   text_style: hmUI.text_style.NONE,
 };
 
 export const BG_TREND_IMAGE = {
-  src: 'watchdrip/arrows/Flat.png',
-  x: px(220),
-  y: px(110),
+  src: 'watchdrip/arrows/None.png',
+  x: (DEVICE_WIDTH - px(41)) / 2,
+  y: px(180),
+  w: px(41),
+  h: px(39),
 };
 
 export const BG_STALE_RECT = {
-  x: px(80),
-  y: px(130),
-  w: px(120),
+  x: (DEVICE_WIDTH - px(180)) / 2,
+  y: px(150),
+  w: px(180),
   h: px(4),
   color: Colors.white,
   visible: false,

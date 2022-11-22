@@ -20,7 +20,7 @@ export const DATA_ALARM_UPDATE_INTERVAL = 30;  //5 * 60;
 
 export const Colors = {
   default:0xfc6950,
-  defaultTransparent:0xfeb4a8,
+  defaultTransparent:0xb0b0b0,
   white:0xffffff,
   bgHigh:0xffa0a0,
   bgLow:0x8bbbff,

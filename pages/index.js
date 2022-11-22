@@ -119,11 +119,11 @@ class Watchdrip {
 
         this.showMessage("Connecting...", "", "");
 
-        ///for display tests
+        //for display tests
+        // this.setMessageVisibility(false);
         // this.setBgElementsVisibility(true);
         // this.updateWidgets();
         // return;
-        //
 
         watchdrip.fetchInfo();
         this.startDataUpdates();
@@ -237,7 +237,7 @@ class Watchdrip {
                         this.watchdripData.updateTimeDiff();
                         this.lastInfoUpdate = this.saveInfo(info);
                         this.lastUpdateSucessful = true;
-                        this.setMessageMessageVisibility(false);
+                        this.setMessageVisibility(false);
                         this.setBgElementsVisibility(true);
                         this.updateWidgets();
                     }
@@ -279,6 +279,7 @@ class Watchdrip {
             text: bgObj.delta + " " + this.watchdripData.getStatus().getUnitText()
         });
 
+        //debug.log(bgObj.getArrowResource());
         this.bgTrendImageWidget.setProperty(hmUI.prop.SRC, bgObj.getArrowResource());
         this.bgStaleLine.setProperty(hmUI.prop.VISIBLE, this.watchdripData.isBgStale());
     }
@@ -295,7 +296,7 @@ class Watchdrip {
         this.messageTextWidget1.setProperty(hmUI.prop.MORE, {text: line1});
         this.messageTextWidget2.setProperty(hmUI.prop.MORE, {text: line2});
         this.messageTextWidget3.setProperty(hmUI.prop.MORE, {text: line3});
-        this.setMessageMessageVisibility(true);
+        this.setMessageVisibility(true);
     }
 
     setBgElementsVisibility(visibility) {
@@ -306,7 +307,7 @@ class Watchdrip {
         this.bgDeltaTextWidget.setProperty(hmUI.prop.VISIBLE, visibility);
     }
 
-    setMessageMessageVisibility(visibility) {
+    setMessageVisibility(visibility) {
         this.messageTextWidget1.setProperty(hmUI.prop.VISIBLE, visibility);
         this.messageTextWidget2.setProperty(hmUI.prop.VISIBLE, visibility);
         this.messageTextWidget3.setProperty(hmUI.prop.VISIBLE, visibility);

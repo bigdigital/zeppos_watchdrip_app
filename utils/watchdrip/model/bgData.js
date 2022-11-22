@@ -9,7 +9,7 @@ export class BgData {
         this.isStale = isStale;
     }
 
-    getBGVal(){
+    getBGVal() {
         if (this.val === '') return "No data";
         return this.val;
     }
@@ -46,7 +46,7 @@ export class BgData {
 
     getArrowResource() {
         let fileName = this.trend;
-        if (fileName === undefined || fileName === ""){
+        if (fileName === undefined || fileName === "") {
             fileName = "None";
         }
         return `watchdrip/arrows/${fileName}.png`;
