@@ -7,7 +7,7 @@ export class DebugText {
         this.debugTextText = "";
         this.widget = hmUI.createWidget(hmUI.widget.TEXT, DEBUG_TEXT);
         this.lines = 0;
-        this.enabled = true;
+        this.enabled = false;
     }
 
     setLines(lines) {
