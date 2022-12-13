@@ -1,6 +1,6 @@
 import {BgData} from "./model/bgData";
 import {StatusData} from "./model/statusData";
-import {getMinutesAgo, MINUTE_IN_MS} from "../../shared/date";
+import {MINUTE_IN_MS, niceTime} from "../../shared/date";
 import {TreatmentData} from "./model/treatmentData";
 import {PumpData} from "./model/pumpData";
 
@@ -74,12 +74,16 @@ export class WatchdripData {
     }
 
     isBgStale() {
-        return this.getBg.isStale || (this.timeSensor.utc - this.getBg().time - this.timeDiff) > BG_STALE_TIME_MS;
+        if (this.getBg().isHasData()) {
+            return this.getBg().isStale || (this.timeSensor.utc - this.getBg().time - this.timeDiff) > BG_STALE_TIME_MS;
+        } else {
+            return false;
+        }
     }
 
     getTimeAgo(time) {
         if (time == null || 0) return "";
         let timeInt = parseInt(time);
-        return getMinutesAgo( this.timeSensor.utc - timeInt - this.timeDiff);
+        return niceTime(this.timeSensor.utc - timeInt - this.timeDiff);
     }
 }

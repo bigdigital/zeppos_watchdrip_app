@@ -10,18 +10,23 @@ export class BgData {
     }
 
     getBGVal() {
-        if (this.val === '') return "No data";
-        return this.val;
+        if (this.isHasData()) {
+            return "No data";
+        }
+        return '';
+    }
+
+    isHasData() {
+        return this.val !== ''
     }
 
     static createEmpty() {
         return new BgData("", "", "", false, false, null, true);
     }
 
-    //test data
-    // static createEmpty() {
-    //     return new BgData("10.5", "+13", "Flat", true, false, "1668975954793", true);
-    // }
+    /* static createEmpty() {
+         return new BgData("10.5", "13", "Flat", true, false, "1668975954793", false);
+     }*/
 
     getArrowText() {
         switch (this.trend) {

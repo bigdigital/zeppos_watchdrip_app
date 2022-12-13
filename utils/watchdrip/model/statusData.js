@@ -5,11 +5,18 @@ export class StatusData {
         this.bat = bat;
     }
 
-    getUnitText(){
-        if (this.isMgdl == null){
+    getBatVal() {
+        if (this.bat === "") {
+            return "--";
+        }
+        return this.bat + "%";
+    }
+
+    getUnitText() {
+        if (this.isMgdl == null) {
             return "";
         }
-        if (this.isMgdl){
+        if (this.isMgdl) {
             return "mg/dl";
         }
         return "mmol";
