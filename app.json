@@ -70,6 +70,14 @@
         {
           "name": "gts4-w",
           "deviceSource": 7995649
+        },
+        {
+          "name": "falcon1",
+          "deviceSource": 414
+        },
+        {
+          "name": "falcon2",
+          "deviceSource": 415
         }
       ],
       "designWidth": 480
