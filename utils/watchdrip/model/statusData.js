@@ -1,3 +1,5 @@
+import {TEST_DATA} from "../../config/constants";
+
 export class StatusData {
     constructor(now, isMgdl, bat) {
         this.now = now;
@@ -23,6 +25,9 @@ export class StatusData {
     }
 
     static createEmpty() {
+        if (TEST_DATA){
+            return new StatusData(1668975954793, true,  58);
+        }
         return new StatusData(null, null, "");
     }
 }

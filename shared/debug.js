@@ -8,6 +8,7 @@ export class DebugText {
         this.widget = hmUI.createWidget(hmUI.widget.TEXT, DEBUG_TEXT);
         this.lines = 0;
         this.enabled = false;
+        this.console = true;
     }
 
     setLines(lines) {
@@ -15,12 +16,19 @@ export class DebugText {
     }
 
     log(text) {
+        let out ='';
+        if (this.console || this.enabled){
+            out = DebugText.objToString(text);
+        }
+        if (this.console) {
+            console.log(out);
+        }
         if (!this.enabled) {
             this.debugTextText = "";
             return;
         }
         this.debugTextText +=
-            this.getTime() + ":" + DebugText.objToString(text) + "\r\n";
+            this.getTime() + ":" + out + "\r\n";
         var lines = this.debugTextText.split("\r\n");
         if (this.lines !== 0 && lines.length > this.lines) {
             // remove line, starting at the first position
