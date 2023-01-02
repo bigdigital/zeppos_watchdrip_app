@@ -72,6 +72,14 @@
           "deviceSource": 7995649
         },
         {
+          "name": "gtr4",
+          "deviceSource": 7930112
+        },
+        {
+          "name": "gtr4-w",
+          "deviceSource": 7930113
+        },
+        {
           "name": "falcon1",
           "deviceSource": 414
         },
