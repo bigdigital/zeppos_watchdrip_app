@@ -227,7 +227,7 @@ class Watchdrip {
             .then((data) => {
                 debug.log("received data");
                 const {result: info = {}} = data;
-                //debug.log(info);
+                debug.log(info);
                try {
                     if (info.error) {
                         debug.log("error:" + info.message);
