@@ -31,7 +31,7 @@ export const DEBUG_TEXT = {
 
 export const TITLE_TEXT = {
   x: (DEVICE_WIDTH - px(288)) / 2,
-  y: px(15),
+  y: px(45),
   w: px(288),
   h: px(42),
   color: Colors.white,
