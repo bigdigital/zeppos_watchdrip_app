@@ -37,16 +37,12 @@ const logger = DeviceRuntimeCore.HmLogger.getLogger("watchdrip_app");
 const {messageBuilder} = getApp()._options.globalData;
 const {appId} = hmApp.packageInfo();
 
+let debug;
 
-const TIME_SENSOR = hmSensor.createSensor(hmSensor.id.TIME);
-
-
-var dataTextWidget;
-var debug;
 /*
 typeof Watchdrip
 */
-var watchdrip = null;
+let watchdrip = null;
 
 const GoBackType = {NONE: 'none', GO_BACK: 'go_back', HIDE: 'hide'};
 
@@ -81,8 +77,8 @@ class Watchdrip {
     }
 
     readConfig() {
-        var configLastUpdate = hmFS.SysProGetInt64(WATCHDRIP_CONFIG_LAST_UPDATE);
-        var configStr = hmFS.SysProGetChars(WATCHDRIP_CONFIG);
+        let configLastUpdate = hmFS.SysProGetInt64(WATCHDRIP_CONFIG_LAST_UPDATE);
+        let configStr = hmFS.SysProGetChars(WATCHDRIP_CONFIG);
         if (!configStr) {
             this.watchdripConfig = WATCHDRIP_CONFIG_DEFAULTS;
             this.saveConfig();
@@ -227,7 +223,7 @@ class Watchdrip {
             .then((data) => {
                 debug.log("received data");
                 const {result: info = {}} = data;
-                //debug.log(info);
+                debug.log(info);
                try {
                     if (info.error) {
                         debug.log("error:" + info.message);
@@ -379,7 +375,7 @@ class Watchdrip {
                 const [fileNameArr2] = hmFS.readdir(file);
 
                 debug.log(fileNameArr2);
-                var res = fs.statSync(filePath);
+                let res = fs.statSync(filePath);
                 debug.log(res);
                 // Image view
                 let view = hmUI.createWidget(hmUI.widget.IMG, {

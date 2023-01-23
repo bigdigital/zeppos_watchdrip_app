@@ -86,6 +86,14 @@
         {
           "name": "falcon2",
           "deviceSource": 415
+        },
+        {
+          "name": "gts4mini",
+          "deviceSource": 246
+        },
+        {
+          "name": "gts4mini2",
+          "deviceSource": 247
         }
       ],
       "designWidth": 480
