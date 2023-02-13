@@ -4,11 +4,11 @@ import {Commands, SERVER_INFO_URL, SERVER_URL,} from "../utils/config/constants"
 // const logger = DeviceRuntimeCore.HmLogger.getLogger("watchdrip_side");
 const messageBuilder = new MessageBuilder();
 
-const fetchInfo = async (ctx) => {
+const fetchInfo = async (ctx, url) => {
     let resp = {};
 
     await fetch({
-        url: SERVER_URL + SERVER_INFO_URL,
+        url: url,
         method: "GET",
     })
         .then((response) => {
@@ -72,16 +72,15 @@ AppSideService({
         });
         messageBuilder.on("request", (ctx) => {
             const jsonRpc = messageBuilder.buf2Json(ctx.request.payload);
+            const {params = {}} = jsonRpc;
+            let url = SERVER_URL;
             switch (jsonRpc.method) {
                 case Commands.getInfo:
-                    return fetchInfo(ctx);
+                    return fetchInfo(ctx, url + SERVER_INFO_URL + "?" + params);
                 case Commands.getImg:
-                    const {params = {}} = jsonRpc;
-                    const url = SERVER_URL + "get_img.php?" + params;
-                    return fetchRaw(ctx, url);
+                    return fetchRaw(ctx, url + "get_img.php?" + params);
                 case Commands.putTreatment:
-                    const {params2 = {}} = jsonRpc;
-                    return fetchRaw(ctx, SERVER_URL + SERVER_PUT_TREATMENTS_URL + "?" + params2);
+                    return fetchRaw(ctx, url + SERVER_PUT_TREATMENTS_URL + "?" + params);
                 default:
                     break;
             }
