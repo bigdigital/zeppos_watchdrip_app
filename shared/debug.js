@@ -1,5 +1,10 @@
-import { DEBUG_TEXT } from "../utils/config/styles";
+
 import { zeroPad } from "./date";
+import {DEBUG_TEXT} from "../utils/config/styles_global";
+
+
+//this helper allow to display logs on the screen
+//Also you can use bridge mode to show logs from the app (need to enable logs inside zepp app development menu)
 
 export class DebugText {
     constructor() {
@@ -7,8 +12,14 @@ export class DebugText {
         this.debugTextText = "";
         this.widget = hmUI.createWidget(hmUI.widget.TEXT, DEBUG_TEXT);
         this.lines = 0;
+        // this.enabled = true;
         this.enabled = false;
-        this.console = true;
+
+        var loggerName = "wathchdrip app";
+        if (hmSetting.getScreenType() === hmSetting.screen_type.AOD){
+            loggerName = loggerName + "-aod";
+        }
+        this.logger = Logger.getLogger(loggerName);
     }
 
     setLines(lines) {
@@ -16,19 +27,14 @@ export class DebugText {
     }
 
     log(text) {
-        let out ='';
-        if (this.console || this.enabled){
-            out = DebugText.objToString(text);
-        }
-        if (this.console) {
-            console.log(out);
-        }
+        let formatted = DebugText.objToString(text);
+        this.logger.log(formatted);
         if (!this.enabled) {
             this.debugTextText = "";
             return;
         }
         this.debugTextText +=
-            this.getTime() + ":" + out + "\r\n";
+            this.getTime() + ":" + formatted + "\r\n";
         var lines = this.debugTextText.split("\r\n");
         if (this.lines !== 0 && lines.length > this.lines) {
             // remove line, starting at the first position
