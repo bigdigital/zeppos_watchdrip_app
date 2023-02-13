@@ -54,18 +54,6 @@ const fetchRaw = async (ctx, url) => {
             method: "GET",
         });
         console.log("log", data);
-
-        //Example of a POST method request
-        // const { body: { data = {} } = {} } = await fetch({
-        //   url: 'https://xxx.com/api/xxx',
-        //   method: 'POST',
-        //   headers: {
-        //     'Content-Type': 'application/json'
-        //   },
-        //   body: JSON.stringify({
-        //     text: 'Hello Zepp OS'
-        //   })
-        // })
         ctx.response({
             data: {result: data},
         });
@@ -91,7 +79,9 @@ AppSideService({
                     const {params = {}} = jsonRpc;
                     const url = SERVER_URL + "get_img.php?" + params;
                     return fetchRaw(ctx, url);
-
+                case Commands.putTreatment:
+                    const {params2 = {}} = jsonRpc;
+                    return fetchRaw(ctx, SERVER_URL + SERVER_PUT_TREATMENTS_URL + "?" + params2);
                 default:
                     break;
             }

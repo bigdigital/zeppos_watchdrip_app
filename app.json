@@ -86,6 +86,18 @@
         {
           "name": "falcon2",
           "deviceSource": 415
+        },
+        {
+          "name": "band7",
+          "deviceSource": 252
+        }, 
+        {
+          "name": "band7_1",
+          "deviceSource": 253
+        },
+        {
+          "name": "band7_2",
+          "deviceSource": 254
         }
       ],
       "designWidth": 480
