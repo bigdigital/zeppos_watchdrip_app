@@ -1,4 +1,4 @@
- # zeppos Watchdrip Companion App for ZEPP OS (Blood sugar monitor) 
+ # Watchdrip Companion App for ZEPP OS (Blood sugar monitor) 
 
 This repository contains a ZEPP OS watch app which is designed to work together with <a href="https://github.com/bigdigital/zeppos_watchdrip_timer_wf">watchface</a>
 and Android phone Watchdrip application (see the latest version on <a href="https://www.patreon.com/xdrip_miband">Patreon page</a>). 
