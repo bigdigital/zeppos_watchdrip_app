@@ -1,6 +1,6 @@
 
 import { zeroPad } from "./date";
-import {DEBUG_TEXT} from "../utils/config/styles_global";
+import {DEBUG_TEXT} from "../utils/config/styles";
 
 
 //this helper allow to display logs on the screen
@@ -13,9 +13,9 @@ export class DebugText {
         this.widget = hmUI.createWidget(hmUI.widget.TEXT, DEBUG_TEXT);
         this.lines = 0;
         // this.enabled = true;
-        this.enabled = false;
+        this.enabled = true;
 
-        var loggerName = "wathchdrip app";
+        var loggerName = "wathchdrip";
         if (hmSetting.getScreenType() === hmSetting.screen_type.AOD){
             loggerName = loggerName + "-aod";
         }

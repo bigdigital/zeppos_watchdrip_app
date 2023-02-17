@@ -1,0 +1,20 @@
+msgid "fetch_data"
+msgstr "Get Data"
+
+msgid "fetch_img"
+msgstr "Fetch Image"
+
+msgid "settings"
+msgstr "Settings"
+
+msgid "add_treatment"
+msgstr "Add treatment"
+
+msgid "disableUpdates"
+msgstr "Disable updates"
+
+msgid "showLog"
+msgstr "Show log"
+
+msgid "useAppFetch"
+msgstr "Use Alarms for fetch"

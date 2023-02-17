@@ -78,9 +78,46 @@ export const MESSAGE_TEXT3 = {
   text_style: hmUI.text_style.NONE,
 }
 
+const COMMON_BUTTON_PADDING = px(50)
+
+export const COMMON_BUTTON_STYLES = {
+  x: COMMON_BUTTON_PADDING,
+  w: DEVICE_WIDTH - COMMON_BUTTON_PADDING*2,
+  h: px(80),
+  text_size: px(36),
+  radius: px(12),
+  normal_color: Colors.default,
+  press_color: Colors.defaultTransparent,
+};
+
+export const COMMON_BUTTON_FETCH = {
+  ...COMMON_BUTTON_STYLES,
+  y: px(260),
+  text: getText("fetch_data"),
+};
+
+export const COMMON_BUTTON_FETCH_IMG = {
+  ...COMMON_BUTTON_STYLES,
+  y: px(360),
+  text: getText("fetch_img"),
+};
+
+export const COMMON_BUTTON_SETTINGS = {
+  ...COMMON_BUTTON_STYLES,
+  y: DEVICE_HEIGHT - px(100),
+  text: getText("settings"),
+};
+
+export const COMMON_BUTTON_ADD_TREATMENT = {
+  ...COMMON_BUTTON_STYLES,
+  y: DEVICE_HEIGHT - px(0),
+  text: getText("add_treatment"),
+};
+
+
 export const VERSION_TEXT = {
   x: (DEVICE_WIDTH - px(288)) / 2,
-  y: DEVICE_HEIGHT - px(40),
+  y: DEVICE_HEIGHT + px(135),
   w: px(288),
   h: px(28),
   color: Colors.white,
@@ -89,31 +126,6 @@ export const VERSION_TEXT = {
   align_v: hmUI.align.CENTER_V,
   text_style: hmUI.text_style.NONE,
 }
-
-
-export const COMMON_BUTTON_FETCH = {
-  x: (DEVICE_WIDTH - px(400)) / 2,
-  y: px(260),
-  w: px(400),
-  h: px(100),
-  text_size: px(36),
-  radius: px(12),
-  normal_color: Colors.default,
-  press_color: Colors.defaultTransparent,
-  text: getText("fetch_data"),
-};
-
-export const COMMON_BUTTON_FETCH_IMG = {
-  x: (DEVICE_WIDTH - px(400)) / 2,
-  y: px(360),
-  w: px(400),
-  h: px(100),
-  text_size: px(36),
-  radius: px(12),
-  normal_color: Colors.default,
-  press_color: Colors.defaultTransparent,
-  text: getText("fetch_img"),
-};
 
 export const BG_VALUE_TEXT = {
   x: (DEVICE_WIDTH - px(250)) / 2,
@@ -167,3 +179,60 @@ export const BG_STALE_RECT = {
   color: Colors.white,
   visible: false,
 };
+
+export const IMG_LOADING_PROGRESS = {
+  x: (DEVICE_WIDTH - px(40)) / 2,
+  y: (DEVICE_HEIGHT - px(40)) / 2,
+  src: 'watchdrip/progress.png',
+  angle:0,
+  center_x: 20,
+  center_y: 20,
+  visible: false,
+};
+
+const SCROLL_ITEM_PADDING = px(30);
+const STATE_IMG_WIDTH = 64;
+const STATE_IMG_HEIGHT = 64;
+const SCROLL_ITEM_HEIGHT = px(90);
+
+export const CONFIG_PAGE_SCROLL_ITEM_CONFIG = [
+  {
+    type_id: 1,
+    item_bg_color: Colors.black,
+    item_bg_radius: px(12),
+    text_view: [
+      {
+        x: px(15),
+        y: px(15),
+        w: DEVICE_WIDTH - SCROLL_ITEM_PADDING*2 - STATE_IMG_WIDTH - px(40),
+        h: SCROLL_ITEM_HEIGHT - px(30),
+        key: 'name',
+        color: Colors.white,
+        text_size: px(36),
+        action: false
+      }
+    ],
+    text_view_count: 1,
+    image_view: [{
+      x: DEVICE_WIDTH - SCROLL_ITEM_PADDING*2 - STATE_IMG_WIDTH - px(15),
+      y: SCROLL_ITEM_HEIGHT/2 - STATE_IMG_HEIGHT/2 ,
+      w: STATE_IMG_WIDTH,
+      h: STATE_IMG_HEIGHT,
+      key: "state_src",
+      action: true
+    }],
+    image_view_count: 1,
+    item_height: SCROLL_ITEM_HEIGHT
+  }
+]
+
+export const CONFIG_PAGE_SCROLL = {
+  x: SCROLL_ITEM_PADDING,
+  y: px(90),
+  h: DEVICE_HEIGHT,
+  w: DEVICE_WIDTH - SCROLL_ITEM_PADDING*2,
+  item_space: px(10),
+  item_config: CONFIG_PAGE_SCROLL_ITEM_CONFIG,
+  item_config_count: CONFIG_PAGE_SCROLL_ITEM_CONFIG.length,
+}
+
