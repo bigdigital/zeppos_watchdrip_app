@@ -286,10 +286,7 @@ class Watchdrip {
     }
 
     checkUpdates() {
-        this.bgStaleLine.setProperty(hmUI.prop.VISIBLE, true);
-
         this.updateTimesWidget();
-        debug.log("checkUpdates");
         if (this.updatingData) {
             // debug.log("updatingData, return");
             return;
