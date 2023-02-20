@@ -30,9 +30,12 @@ import {
     BG_VALUE_TEXT,
     COMMON_BUTTON_ADD_TREATMENT,
     COMMON_BUTTON_SETTINGS,
-    CONFIG_PAGE_SCROLL, DEVICE_TYPE,
+    CONFIG_PAGE_SCROLL,
+    DEVICE_TYPE,
     IMG_LOADING_PROGRESS,
-    MESSAGE_TEXT, MESSAGE_TEXT_SIZE, MESSAGE_TEXT_WIDTH, RADIO_OFF, RADIO_ON,
+    MESSAGE_TEXT,
+    RADIO_OFF,
+    RADIO_ON,
     TITLE_TEXT,
     VERSION_TEXT,
 } from "../utils/config/styles";
@@ -41,7 +44,6 @@ import * as fs from "./../shared/fs";
 import {WatchdripData} from "../utils/watchdrip/watchdrip-data";
 import {getDataTypeConfig, img} from "../utils/helper";
 import {gotoSubpage} from "../shared/navigate";
-import {DEVICE_WIDTH} from "../utils/config/device";
 
 const logger = DeviceRuntimeCore.HmLogger.getLogger("watchdrip_app");
 
@@ -124,11 +126,10 @@ class Watchdrip {
                 break;
         }
 
-        if (pageTitle){
-            if (DEVICE_TYPE === "round"){
+        if (pageTitle) {
+            if (DEVICE_TYPE === "round") {
                 this.titleTextWidget = hmUI.createWidget(hmUI.widget.TEXT, {...TITLE_TEXT, text: pageTitle})
-            }
-            else {
+            } else {
                 hmUI.updateStatusBarTitle(pageTitle);
             }
         }
@@ -150,8 +151,8 @@ class Watchdrip {
     }
 
     saveConfig() {
-        hmFS.SysProSetChars(WATCHDRIP_CONFIG, json2str(watchdrip.watchdripConfig));
-        hmFS.SysProSetInt64(WATCHDRIP_CONFIG_LAST_UPDATE, watchdrip.timeSensor.utc);
+        hmFS.SysProSetChars(WATCHDRIP_CONFIG, json2str(this.watchdripConfig));
+        hmFS.SysProSetInt64(WATCHDRIP_CONFIG_LAST_UPDATE, this.timeSensor.utc);
     }
 
     main_page() {
@@ -177,8 +178,7 @@ class Watchdrip {
 
         if (this.watchdripConfig.disableUpdates) {
             this.showMessage(getText("data_upd_disabled"));
-        }
-        else{
+        } else {
             if (this.readInfo()) {
                 this.updateWidgets();
             }
@@ -207,25 +207,10 @@ class Watchdrip {
         });
     }
 
-    //use watchdrip inside all nested elements
-    configPageScrollListItemClick(list, index) {
-        debug.log(index);
-        const key = watchdrip.configDataList[index].key
-        let val = watchdrip.watchdripConfig[key]
-        watchdrip.watchdripConfig[key] = !val;
-        watchdrip.saveConfig();
-        //update list
-        watchdrip.configScrollList.setProperty(hmUI.prop.UPDATE_DATA, {
-            ...watchdrip.getConfigData(),
-            //Refresh the data and stay on the current page. If it is not set or set to 0, it will return to the top of the list.
-            on_page: 1
-        });
-    }
-
     getConfigData() {
         let dataList = [];
 
-        Object.entries(watchdrip.watchdripConfig).forEach(entry => {
+        Object.entries(this.watchdripConfig).forEach(entry => {
             const [key, value] = entry;
             let stateImg = RADIO_OFF
             if (value) {
@@ -237,10 +222,10 @@ class Watchdrip {
                 state_src: img('icons/' + stateImg)
             });
         });
-        watchdrip.configDataList = dataList;
+        this.configDataList = dataList;
 
         let dataTypeConfig = [
-            getDataTypeConfig(  1, 0, dataList.length)
+            getDataTypeConfig(1, 0, dataList.length)
         ]
         return {
             data_array: dataList,
@@ -260,7 +245,19 @@ class Watchdrip {
         this.configScrollList = hmUI.createWidget(hmUI.widget.SCROLL_LIST,
             {
                 ...CONFIG_PAGE_SCROLL,
-                item_click_func: this.configPageScrollListItemClick,
+                item_click_func: (list, index) => {
+                    debug.log(index);
+                    const key = this.configDataList[index].key
+                    let val = this.watchdripConfig[key]
+                    this.watchdripConfig[key] = !val;
+                    this.saveConfig();
+                    //update list
+                    this.configScrollList.setProperty(hmUI.prop.UPDATE_DATA, {
+                        ...this.getConfigData(),
+                        //Refresh the data and stay on the current page. If it is not set or set to 0, it will return to the top of the list.
+                        on_page: 1
+                    })
+                },
                 ...this.getConfigData()
             });
     }
@@ -423,9 +420,9 @@ class Watchdrip {
     }
 
     updateLoader() {
-        watchdrip.progressAngle = watchdrip.progressAngle + PROGRESS_ANGLE_INC;
-        if (watchdrip.progressAngle >= 360) watchdrip.progressAngle = 0;
-        watchdrip.progressWidget.setProperty(hmUI.prop.MORE, {angle: watchdrip.progressAngle});
+        this.progressAngle = this.progressAngle + PROGRESS_ANGLE_INC;
+        if (this.progressAngle >= 360) this.progressAngle = 0;
+        this.progressWidget.setProperty(hmUI.prop.MORE, {angle: this.progressAngle});
     }
 
     stopLoader() {
@@ -483,7 +480,7 @@ class Watchdrip {
         //     text_width: MESSAGE_TEXT_WIDTH,
         //     wrapped: 1
         // });
-       // debug.log(lay);
+        // debug.log(lay);
         this.messageTextWidget.setProperty(hmUI.prop.MORE, {text: text});
         this.setMessageVisibility(true);
     }
