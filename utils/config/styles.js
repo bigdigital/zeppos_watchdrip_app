@@ -13,7 +13,8 @@ if (DEVICE_WIDTH < 340){
 
 var COMMON_BUTTON_PADDING = 0;
 var SCROLL_ITEM_PADDING = 0;
-var MESSAGE_TEXT_WIDTH = DEVICE_WIDTH;
+export const MESSAGE_TEXT_SIZE = px(38);
+export var MESSAGE_TEXT_WIDTH = DEVICE_WIDTH;
 export var RADIO_ON = "radio_on_rect.png";
 export var RADIO_OFF = "radio_off_rect.png";
 var SCROL_PAGE_Y = STATUS_BAR_HEIGHT
@@ -59,31 +60,7 @@ export const MESSAGE_TEXT = {
   w: MESSAGE_TEXT_WIDTH,
   h: px(38),
   color: Colors.white,
-  text_size: px(28),
-  align_h: hmUI.align.CENTER_H,
-  align_v: hmUI.align.CENTER_V,
-  text_style: hmUI.text_style.NONE,
-}
-
-export const MESSAGE_TEXT2 = {
-  x: (DEVICE_WIDTH - MESSAGE_TEXT_WIDTH) / 2,
-  y: px(125),
-  w: MESSAGE_TEXT_WIDTH,
-  h: px(38),
-  color: Colors.white,
-  text_size: px(28),
-  align_h: hmUI.align.CENTER_H,
-  align_v: hmUI.align.CENTER_V,
-  text_style: hmUI.text_style.NONE,
-}
-
-export const MESSAGE_TEXT3 = {
-  x: (DEVICE_WIDTH - MESSAGE_TEXT_WIDTH) / 2,
-  y: px(160),
-  w: MESSAGE_TEXT_WIDTH,
-  h: px(38),
-  color: Colors.white,
-  text_size: px(28),
+  text_size: MESSAGE_TEXT_SIZE,
   align_h: hmUI.align.CENTER_H,
   align_v: hmUI.align.CENTER_V,
   text_style: hmUI.text_style.NONE,

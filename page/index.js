@@ -32,9 +32,7 @@ import {
     COMMON_BUTTON_SETTINGS,
     CONFIG_PAGE_SCROLL, DEVICE_TYPE,
     IMG_LOADING_PROGRESS,
-    MESSAGE_TEXT,
-    MESSAGE_TEXT2,
-    MESSAGE_TEXT3, RADIO_OFF, RADIO_ON,
+    MESSAGE_TEXT, MESSAGE_TEXT_SIZE, MESSAGE_TEXT_WIDTH, RADIO_OFF, RADIO_ON,
     TITLE_TEXT,
     VERSION_TEXT,
 } from "../utils/config/styles";
@@ -43,6 +41,7 @@ import * as fs from "./../shared/fs";
 import {WatchdripData} from "../utils/watchdrip/watchdrip-data";
 import {getDataTypeConfig, img} from "../utils/helper";
 import {gotoSubpage} from "../shared/navigate";
+import {DEVICE_WIDTH} from "../utils/config/device";
 
 const logger = DeviceRuntimeCore.HmLogger.getLogger("watchdrip_app");
 
@@ -160,14 +159,13 @@ class Watchdrip {
     main_page() {
         hmSetting.setBrightScreen(60);
         hmApp.setScreenKeep(true);
+
+
         this.watchdripData = new WatchdripData(this.timeSensor);
         this.readInfo();
         let pkg = hmApp.packageInfo();
         this.versionTextWidget = hmUI.createWidget(hmUI.widget.TEXT, {...VERSION_TEXT, text: "v" + pkg.version});
-        this.messageTextWidget1 = hmUI.createWidget(hmUI.widget.TEXT, {...MESSAGE_TEXT, text: ""});
-        this.messageTextWidget2 = hmUI.createWidget(hmUI.widget.TEXT, {...MESSAGE_TEXT2, text: ""});
-        this.messageTextWidget3 = hmUI.createWidget(hmUI.widget.TEXT, {...MESSAGE_TEXT3, text: ""});
-
+        this.messageTextWidget = hmUI.createWidget(hmUI.widget.TEXT, {...MESSAGE_TEXT, text: ""});
         this.bgValTextWidget = hmUI.createWidget(hmUI.widget.TEXT, BG_VALUE_TEXT);
         this.bgValTimeTextWidget = hmUI.createWidget(hmUI.widget.TEXT, BG_TIME_TEXT);
         this.bgDeltaTextWidget = hmUI.createWidget(hmUI.widget.TEXT, BG_DELTA_TEXT);
@@ -182,7 +180,7 @@ class Watchdrip {
         // return;
 
         if (this.watchdripConfig.disableUpdates) {
-            this.showMessage(getText("data_upd_disabled"), "", "");
+            this.showMessage(getText("data_upd_disabled"));
         }
         else{
             this.startDataUpdates();
@@ -288,6 +286,8 @@ class Watchdrip {
     }
 
     checkUpdates() {
+        this.bgStaleLine.setProperty(hmUI.prop.VISIBLE, true);
+
         this.updateTimesWidget();
         debug.log("checkUpdates");
         if (this.updatingData) {
@@ -365,7 +365,7 @@ class Watchdrip {
         if (messageBuilder.connectStatus() === false) {
             debug.log("No BT Connection");
             if (isDisplay) {
-                this.showMessage('Please make sure', 'the bluetooth is enabled', 'on your phone');
+                this.showMessage(getText("status_no_bt"));
             } else {
                 this.handleGoBack();
             }
@@ -373,7 +373,7 @@ class Watchdrip {
         }
 
         if (isDisplay) {
-            this.showMessage(getText("connecting"), "", "");
+            this.showMessage(getText("connecting"));
         } else {
             this.startLoader();
         }
@@ -413,7 +413,7 @@ class Watchdrip {
             .finally(() => {
                 this.updatingData = false;
                 if (isDisplay && !this.lastUpdateSucessful) {
-                    this.showMessage('Launch "Watchdrip+" app', 'on your phone and activate', '"web server" option');
+                    this.showMessage(getText("status_start_watchdrip"));
                 }
                 if (!isDisplay) {
                     this.stopLoader();
@@ -477,11 +477,15 @@ class Watchdrip {
         });
     }
 
-    showMessage(line1, line2, line3) {
-        this.setBgElementsVisibility(false);
-        this.messageTextWidget1.setProperty(hmUI.prop.MORE, {text: line1});
-        this.messageTextWidget2.setProperty(hmUI.prop.MORE, {text: line2});
-        this.messageTextWidget3.setProperty(hmUI.prop.MORE, {text: line3});
+    showMessage(text) {
+        //this.setBgElementsVisibility(false);
+        let lay = hmUI.getTextLayout(text, {
+            text_size: MESSAGE_TEXT_SIZE,
+            text_width: MESSAGE_TEXT_WIDTH,
+            wrapped: 1
+        });
+        debug.log(lay);
+        this.messageTextWidget.setProperty(hmUI.prop.MORE, {w:lay.width, h:lay.height, text: text});
         this.setMessageVisibility(true);
     }
 
@@ -494,9 +498,7 @@ class Watchdrip {
     }
 
     setMessageVisibility(visibility) {
-        this.messageTextWidget1.setProperty(hmUI.prop.VISIBLE, visibility);
-        this.messageTextWidget2.setProperty(hmUI.prop.VISIBLE, visibility);
-        this.messageTextWidget3.setProperty(hmUI.prop.VISIBLE, visibility);
+        this.messageTextWidget.setProperty(hmUI.prop.VISIBLE, visibility);
     }
 
     readInfo() {
