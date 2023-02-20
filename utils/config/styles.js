@@ -25,7 +25,7 @@ if (DEVICE_TYPE === "round"){
   SCROLL_ITEM_PADDING = px(30);
   RADIO_ON = "radio_on.png";
   RADIO_OFF = "radio_off.png";
-  MESSAGE_TEXT_WIDTH = DEVICE_WIDTH - px(20)
+  MESSAGE_TEXT_WIDTH = DEVICE_WIDTH - px(20);
 }
 
 export const DEBUG_TEXT = {
@@ -58,12 +58,13 @@ export const MESSAGE_TEXT = {
   x: (DEVICE_WIDTH - MESSAGE_TEXT_WIDTH) / 2,
   y: px(90),
   w: MESSAGE_TEXT_WIDTH,
-  h: px(38),
+  h: px(140) ,
   color: Colors.white,
   text_size: MESSAGE_TEXT_SIZE,
   align_h: hmUI.align.CENTER_H,
   align_v: hmUI.align.CENTER_V,
   text_style: hmUI.text_style.NONE,
+//  text_style: hmUI.text_style.WRAP, //allows to wrap long text
 }
 
 export const COMMON_BUTTON_STYLES = {
@@ -158,9 +159,9 @@ export const BG_TREND_IMAGE = {
 
 export const BG_STALE_RECT = {
   x: (DEVICE_WIDTH - px(180)) / 2,
-  y: px(150),
+  y: px(130),
   w: px(180),
-  h: px(4),
+  h: px(5),
   color: Colors.white,
   visible: false,
 };

@@ -15,7 +15,7 @@ export const WATCHDRIP_CONFIG_LAST_UPDATE = "watchdrip_config_last";
 
 export const WATCHDRIP_CONFIG_DEFAULTS = {
     disableUpdates: false,
-    showLog: true,
+    showLog: false,
     useAppFetch: false,
 };
 

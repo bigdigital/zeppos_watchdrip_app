@@ -48,7 +48,6 @@ const logger = DeviceRuntimeCore.HmLogger.getLogger("watchdrip_app");
 const {messageBuilder} = getApp()._options.globalData;
 const {appId} = hmApp.packageInfo();
 
-
 /*
 typeof DebugText
 */
@@ -86,7 +85,6 @@ class Watchdrip {
         this.fetchMode = FetchMode.DISPLAY;
 
         this.readConfig();
-        debug.log(this.watchdripConfig);
         debug.setEnabled(this.watchdripConfig.showLog);
     }
 
@@ -152,15 +150,13 @@ class Watchdrip {
     }
 
     saveConfig() {
-        hmFS.SysProSetChars(WATCHDRIP_CONFIG, json2str(this.watchdripConfig));
-        hmFS.SysProSetChars(WATCHDRIP_CONFIG_LAST_UPDATE, this.timeSensor.utc);
+        hmFS.SysProSetChars(WATCHDRIP_CONFIG, json2str(watchdrip.watchdripConfig));
+        hmFS.SysProSetInt64(WATCHDRIP_CONFIG_LAST_UPDATE, watchdrip.timeSensor.utc);
     }
 
     main_page() {
         hmSetting.setBrightScreen(60);
         hmApp.setScreenKeep(true);
-
-
         this.watchdripData = new WatchdripData(this.timeSensor);
         this.readInfo();
         let pkg = hmApp.packageInfo();
@@ -183,6 +179,9 @@ class Watchdrip {
             this.showMessage(getText("data_upd_disabled"));
         }
         else{
+            if (this.readInfo()) {
+                this.updateWidgets();
+            }
             this.startDataUpdates();
         }
 
@@ -208,6 +207,7 @@ class Watchdrip {
         });
     }
 
+    //use watchdrip inside all nested elements
     configPageScrollListItemClick(list, index) {
         debug.log(index);
         const key = watchdrip.configDataList[index].key
@@ -322,12 +322,11 @@ class Watchdrip {
             if (this.lastInfoUpdate === lastInfoUpdate) {
                 //data not modified from outside scope so nothing to do
                 debug.log("data not modified");
-
-                this.setMessageVisibility(false);
-                this.setBgElementsVisibility(true);
-                this.updateWidgets();
                 return;
             }
+            debug.log("update from remote");
+            this.readInfo();
+            this.lastInfoUpdate = lastInfoUpdate;
             this.updateWidgets();
         }
     }
@@ -395,8 +394,6 @@ class Watchdrip {
                         this.watchdripData.setData(dataInfo);
                         this.watchdripData.updateTimeDiff();
 
-                        this.setMessageVisibility(false);
-                        this.setBgElementsVisibility(true);
                         this.updateWidgets();
                     }
                     this.lastInfoUpdate = this.saveInfo(info);
@@ -440,6 +437,9 @@ class Watchdrip {
     }
 
     updateWidgets() {
+        debug.log('updateWidgets');
+        this.setMessageVisibility(false);
+        this.setBgElementsVisibility(true);
         this.updateValuesWidget()
         this.updateTimesWidget()
     }
@@ -475,14 +475,16 @@ class Watchdrip {
     }
 
     showMessage(text) {
-        //this.setBgElementsVisibility(false);
-        let lay = hmUI.getTextLayout(text, {
-            text_size: MESSAGE_TEXT_SIZE,
-            text_width: MESSAGE_TEXT_WIDTH,
-            wrapped: 1
-        });
-        debug.log(lay);
-        this.messageTextWidget.setProperty(hmUI.prop.MORE, {w:lay.width, h:lay.height, text: text});
+        this.setBgElementsVisibility(false);
+        //use for autowrap
+        //
+        // let lay = hmUI.getTextLayout(text, {
+        //     text_size: MESSAGE_TEXT_SIZE,
+        //     text_width: MESSAGE_TEXT_WIDTH,
+        //     wrapped: 1
+        // });
+       // debug.log(lay);
+        this.messageTextWidget.setProperty(hmUI.prop.MORE, {text: text});
         this.setMessageVisibility(true);
     }
 
@@ -509,6 +511,7 @@ class Watchdrip {
             }
         }
         this.watchdripData.setData(data);
+        return data;
     }
 
     readLastUpdate() {

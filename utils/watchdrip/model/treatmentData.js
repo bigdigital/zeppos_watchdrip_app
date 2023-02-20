@@ -1,10 +1,13 @@
+import {TEST_DATA} from "../../config/constants";
+import {MINUTE_IN_MS} from "../../../shared/date";
+
 export class TreatmentData {
-    constructor(insulin, carbs, time, predictIOB, predictWPB) {
+    constructor(insulin, carbs, time, predictIOB, predictBWP) {
         this.insulin = insulin;
         this.carbs = carbs;
         this.time = time;
         this.predictIOB = predictIOB;
-        this.predictWPB = predictWPB;
+        this.predictBWP = predictBWP;
     }
 
     getPredictIOB() {
@@ -14,11 +17,11 @@ export class TreatmentData {
         return "IOB: " + this.predictIOB;
     }
 
-    getPredictWPB() {
-        if (this.predictWPB === "" || this.predictWPB === undefined) {
+    getPredictBWP() {
+        if (this.predictBWP === "" || this.predictBWP === undefined) {
             return "";
         }
-        return "WPB: " + this.predictWPB;
+        return "BWP: " + this.predictBWP;
     }
 
     getTreatments() {
@@ -36,11 +39,10 @@ export class TreatmentData {
     }
 
 
-    /*static createEmpty() {
-        return new TreatmentData("10", "20", 1668975954793, "10u" ,"20u");
-    }*/
-
     static createEmpty() {
+        if (TEST_DATA){
+            return new TreatmentData("10", "20", Date.now()-6*MINUTE_IN_MS, "10u" ,"20u");
+        }
         return new TreatmentData("", "", null, "", "");
     }
 }
