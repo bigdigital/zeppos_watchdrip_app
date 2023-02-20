@@ -1,19 +1,31 @@
 import { gettext as getText } from "i18n";
-import {DEVICE_HEIGHT, DEVICE_WIDTH} from "./device";
+import {DEVICE_HEIGHT, DEVICE_WIDTH, DEVICE_SHAPE} from "./device";
 
 import {Colors} from "./constants";
 
-export const COMMON_TITLE_TEXT = {
-  x: px(96),
-  y: px(100),
-  w: px(288),
-  h: px(46),
-  color: Colors.white,
-  text_size: px(36),
-  align_h: hmUI.align.CENTER_H,
-  align_v: hmUI.align.CENTER_V,
-  text_style: hmUI.text_style.NONE,
-};
+export const DEVICE_TYPE = DEVICE_SHAPE ? 'round' : 'square'
+
+const STATUS_BAR_HEIGHT = 20;
+var TEXT_SIZE = px(36);
+if (DEVICE_WIDTH < 340){
+  TEXT_SIZE = px(20)
+}
+
+var COMMON_BUTTON_PADDING = 0;
+var SCROLL_ITEM_PADDING = 0;
+var MESSAGE_TEXT_WIDTH = DEVICE_WIDTH;
+export var RADIO_ON = "radio_on_rect.png";
+export var RADIO_OFF = "radio_off_rect.png";
+var SCROL_PAGE_Y = STATUS_BAR_HEIGHT
+
+if (DEVICE_TYPE === "round"){
+  SCROL_PAGE_Y = px(90);
+  COMMON_BUTTON_PADDING = px(50);
+  SCROLL_ITEM_PADDING = px(30);
+  RADIO_ON = "radio_on.png";
+  RADIO_OFF = "radio_off.png";
+  MESSAGE_TEXT_WIDTH = DEVICE_WIDTH - px(20)
+}
 
 export const DEBUG_TEXT = {
   x: 50,
@@ -35,17 +47,16 @@ export const TITLE_TEXT = {
   w: px(288),
   h: px(42),
   color: Colors.white,
-  text_size: px(36),
+  text_size: TEXT_SIZE,
   align_h: hmUI.align.CENTER_H,
   align_v: hmUI.align.CENTER_V,
   text_style: hmUI.text_style.NONE,
-  text: "Watchdrip+"
 }
 
 export const MESSAGE_TEXT = {
-  x: (DEVICE_WIDTH - px(350)) / 2,
+  x: (DEVICE_WIDTH - MESSAGE_TEXT_WIDTH) / 2,
   y: px(90),
-  w: px(350),
+  w: MESSAGE_TEXT_WIDTH,
   h: px(38),
   color: Colors.white,
   text_size: px(28),
@@ -55,9 +66,9 @@ export const MESSAGE_TEXT = {
 }
 
 export const MESSAGE_TEXT2 = {
-  x: (DEVICE_WIDTH - px(350)) / 2,
+  x: (DEVICE_WIDTH - MESSAGE_TEXT_WIDTH) / 2,
   y: px(125),
-  w: px(350),
+  w: MESSAGE_TEXT_WIDTH,
   h: px(38),
   color: Colors.white,
   text_size: px(28),
@@ -67,9 +78,9 @@ export const MESSAGE_TEXT2 = {
 }
 
 export const MESSAGE_TEXT3 = {
-  x: (DEVICE_WIDTH - px(350)) / 2,
+  x: (DEVICE_WIDTH - MESSAGE_TEXT_WIDTH) / 2,
   y: px(160),
-  w: px(350),
+  w: MESSAGE_TEXT_WIDTH,
   h: px(38),
   color: Colors.white,
   text_size: px(28),
@@ -78,14 +89,12 @@ export const MESSAGE_TEXT3 = {
   text_style: hmUI.text_style.NONE,
 }
 
-const COMMON_BUTTON_PADDING = px(50)
-
 export const COMMON_BUTTON_STYLES = {
   x: COMMON_BUTTON_PADDING,
   w: DEVICE_WIDTH - COMMON_BUTTON_PADDING*2,
   h: px(80),
-  text_size: px(36),
-  radius: px(12),
+  text_size: TEXT_SIZE,
+  radius: px(44),
   normal_color: Colors.default,
   press_color: Colors.defaultTransparent,
 };
@@ -113,7 +122,6 @@ export const COMMON_BUTTON_ADD_TREATMENT = {
   y: DEVICE_HEIGHT - px(0),
   text: getText("add_treatment"),
 };
-
 
 export const VERSION_TEXT = {
   x: (DEVICE_WIDTH - px(288)) / 2,
@@ -155,8 +163,8 @@ export const BG_DELTA_TEXT = {
   x: (DEVICE_WIDTH - px(200)) / 2,
   y: px(230),
   w: px(200),
-  h: px(36),
-  color: Colors.defaultTransparent,
+  h: TEXT_SIZE,
+  color: Colors.white,
   text_size: px(28),
   align_h: hmUI.align.CENTER_H,
   align_v: hmUI.align.CENTER_V,
@@ -190,8 +198,9 @@ export const IMG_LOADING_PROGRESS = {
   visible: false,
 };
 
-const SCROLL_ITEM_PADDING = px(30);
-const STATE_IMG_WIDTH = 64;
+
+
+const STATE_IMG_WIDTH = 100;
 const STATE_IMG_HEIGHT = 64;
 const SCROLL_ITEM_HEIGHT = px(90);
 
@@ -208,7 +217,7 @@ export const CONFIG_PAGE_SCROLL_ITEM_CONFIG = [
         h: SCROLL_ITEM_HEIGHT - px(30),
         key: 'name',
         color: Colors.white,
-        text_size: px(36),
+        text_size: TEXT_SIZE,
         action: false
       }
     ],
@@ -228,8 +237,8 @@ export const CONFIG_PAGE_SCROLL_ITEM_CONFIG = [
 
 export const CONFIG_PAGE_SCROLL = {
   x: SCROLL_ITEM_PADDING,
-  y: px(90),
-  h: DEVICE_HEIGHT,
+  y: SCROL_PAGE_Y,
+  h: DEVICE_HEIGHT - px(20),
   w: DEVICE_WIDTH - SCROLL_ITEM_PADDING*2,
   item_space: px(10),
   item_config: CONFIG_PAGE_SCROLL_ITEM_CONFIG,

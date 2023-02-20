@@ -22,3 +22,12 @@ export function range(start, end, step = 1) {
 
     return result;
 }
+
+
+export const getDataTypeConfig = (id_type, i_start, i_end) => {
+    return {
+        start: i_start, // first array element that uses config
+        end: i_end, // last array element that uses config
+        type_id: id_type, // item_config number used
+    };
+};

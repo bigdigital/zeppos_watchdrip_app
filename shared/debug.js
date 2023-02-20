@@ -3,7 +3,7 @@ import { zeroPad } from "./date";
 import {DEBUG_TEXT} from "../utils/config/styles";
 
 
-//this helper allow to display logs on the screen
+//this helper allows to display logs on the screen
 //Also you can use bridge mode to show logs from the app (need to enable logs inside zepp app development menu)
 
 export class DebugText {
@@ -13,9 +13,9 @@ export class DebugText {
         this.widget = hmUI.createWidget(hmUI.widget.TEXT, DEBUG_TEXT);
         this.lines = 0;
         // this.enabled = true;
-        this.enabled = true;
+        this.enabled = false;
 
-        var loggerName = "wathchdrip";
+        var loggerName = "watchdrip_app";
         if (hmSetting.getScreenType() === hmSetting.screen_type.AOD){
             loggerName = loggerName + "-aod";
         }
@@ -24,6 +24,10 @@ export class DebugText {
 
     setLines(lines) {
         this.lines = lines;
+    }
+
+    setEnabled(enabled){
+        this.enabled = enabled;
     }
 
     log(text) {

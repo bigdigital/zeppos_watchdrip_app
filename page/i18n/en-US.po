@@ -18,3 +18,12 @@ msgstr "Show log"
 
 msgid "useAppFetch"
 msgstr "Use Alarms for fetch"
+
+msgid "data_upd_disabled"
+msgstr "Data updates disabled"
+
+msgid "connecting"
+msgstr "Connecting..."
+
+msgid "no_data"
+msgstr "No Data"

@@ -24,8 +24,8 @@ export const PROGRESS_UPDATE_INTERVAL_MS = 100;
 export const PROGRESS_ANGLE_INC = 30;
 
 export const Colors = {
-  default:0xfc6950,
-  defaultTransparent:0xababab,
+  default:0x333333,
+  defaultTransparent:0x059AF7,
   white:0xffffff,
   black:0x000000,
   bgHigh:0xffa0a0,
