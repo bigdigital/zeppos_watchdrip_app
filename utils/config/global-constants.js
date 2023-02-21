@@ -11,7 +11,7 @@ export const WF_SYSTEM_ALARM_ID = "watchdrip_alarm_id";
 export const WATCHDRIP_ALARM_CONFIG = "watchdrip_alarm_config";
 
 export const WATCHDRIP_CONFIG = "watchdrip_config";
-export const WATCHDRIP_CONFIG_LAST_UPDATE = "watchdrip_config_last";
+export const WATCHDRIP_CONFIG_LAST_UPDATE = "watchdrip_config_time";
 
 export const WATCHDRIP_CONFIG_DEFAULTS = {
     disableUpdates: false,

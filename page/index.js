@@ -10,9 +10,11 @@ import {
     DATA_UPDATE_INTERVAL_MS,
     PROGRESS_ANGLE_INC,
     PROGRESS_UPDATE_INTERVAL_MS,
+    XDRIP_UPDATE_INTERVAL_MS,
 } from "../utils/config/constants";
 import {
     WATCHDRIP_ALARM_CONFIG,
+    WATCHDRIP_ALARM_CONFIG_DEFAULTS,
     WATCHDRIP_CONFIG,
     WATCHDRIP_CONFIG_DEFAULTS,
     WATCHDRIP_CONFIG_LAST_UPDATE,
@@ -59,7 +61,7 @@ typeof Watchdrip
 */
 var watchdrip = null;
 
-const GoBackType = {NONE: 'none', GO_BACK: 'go_back', HIDE: 'hide'};
+const GoBackType = {NONE: 'none', GO_BACK: 'go_back', HIDE_PAGE: 'hide_page', HIDE: 'hide'};
 const PagesType = {
     MAIN: 'main',
     UPDATE: 'update',
@@ -84,6 +86,7 @@ class Watchdrip {
         this.lastUpdateSucessful = false;
         this.updatingData = false;
         this.intervalTimer = null;
+        this.updateIntervals = DATA_UPDATE_INTERVAL_MS;
         this.fetchMode = FetchMode.DISPLAY;
 
         this.readConfig();
@@ -93,9 +96,8 @@ class Watchdrip {
     start(data) {
         debug.log("start");
         debug.log(data);
-
         let pageTitle = '';
-
+        this.goBackType = GoBackType.NONE;
         switch (data.page) {
             case PagesType.MAIN:
                 let pkg = hmApp.packageInfo();
@@ -103,13 +105,13 @@ class Watchdrip {
                 this.main_page();
                 break;
             case PagesType.UPDATE:
-                this.goBackType = GoBackType.GO_BACK;
+                this.goBackType = GoBackType.HIDE;
                 this.readAlarmConfig();
                 this.watchdripAlarmConfig = {...this.watchdripAlarmConfig, ...data.params};
                 this.fetch_page();
                 break;
             case PagesType.UPDATE_LOCAL:
-                this.goBackType = GoBackType.GO_BACK;
+                this.goBackType = GoBackType.HIDE;
                 this.readAlarmConfig();
                 this.fetch_page();
                 break;
@@ -283,9 +285,10 @@ class Watchdrip {
     }
 
     checkUpdates() {
+        //debug.log("checkUpdates");
         this.updateTimesWidget();
         if (this.updatingData) {
-            // debug.log("updatingData, return");
+            //debug.log("updatingData, return");
             return;
         }
         let lastInfoUpdate = this.readLastUpdate();
@@ -301,30 +304,41 @@ class Watchdrip {
                 return;
             }
         } else {
-            if (!this.lastUpdateSucessful) {
-                if (this.lastUpdateAttempt !== null)
-                    if (this.isTimeout(this.lastUpdateAttempt, DATA_STALE_TIME_MS)) {
-                        debug.log("reached DATA_STALE_TIME_MS");
-                        this.fetchInfo();
-                        return;
-                    } else {
-                        return;
-                    }
+            if (this.lastUpdateSucessful) {
+                const bgTimeOlder = this.isTimeout(this.watchdripData.getBg().time, XDRIP_UPDATE_INTERVAL_MS);
+                const statusNowOlder = this.isTimeout(this.watchdripData.getStatus().now, XDRIP_UPDATE_INTERVAL_MS);
+                if (bgTimeOlder || statusNowOlder) {
+                    debug.log("data older than sensor update interval");
+                    this.fetchInfo();
+                    return;
+                }
+                if (this.isTimeout(lastInfoUpdate, this.updateIntervals)) {
+                    debug.log("reached updateIntervals");
+                    this.fetchInfo();
+                    return;
+                }
+                if (this.lastInfoUpdate === lastInfoUpdate) {
+                    //data not modified from outside scope so nothing to do
+                    //debug.log("data not modified");
+                    return;
+                }
+                //update widgets because the data was modified outside the current scope
+                debug.log("update from remote");
+                this.readInfo();
+                this.lastInfoUpdate = lastInfoUpdate;
+                this.updateWidgets();
+            } else {
+                if (this.lastUpdateAttempt == null) {
+                    debug.log("initial fetch");
+                    this.fetchInfo();
+                    return;
+                }
+                if (this.isTimeout(this.lastUpdateAttempt, DATA_STALE_TIME_MS)) {
+                    debug.log("reached DATA_STALE_TIME_MS");
+                    this.fetchInfo();
+                    return;
+                }
             }
-            if (this.isTimeout(lastInfoUpdate, DATA_UPDATE_INTERVAL_MS)) {
-                debug.log("reached DATA_UPDATE_INTERVAL_MS");
-                this.fetchInfo();
-                return;
-            }
-            if (this.lastInfoUpdate === lastInfoUpdate) {
-                //data not modified from outside scope so nothing to do
-                debug.log("data not modified");
-                return;
-            }
-            debug.log("update from remote");
-            this.readInfo();
-            this.lastInfoUpdate = lastInfoUpdate;
-            this.updateWidgets();
         }
     }
 
@@ -332,6 +346,10 @@ class Watchdrip {
         debug.log("fetch_page");
         hmUI.setStatusBarVisible(false);
         this.prepareNextAlarm();
+        if (this.watchdripConfig.disableUpdates || !this.watchdripConfig.useAppFetch) {
+            this.handleGoBack();
+            return;
+        }
         hmSetting.setBrightScreen(999);
         this.progressWidget = hmUI.createWidget(hmUI.widget.IMG, IMG_LOADING_PROGRESS);
         this.progressAngle = 0;
@@ -341,9 +359,13 @@ class Watchdrip {
     }
 
     hide_page() {
-        //hmSetting.setScreenOff();
         hmApp.setScreenKeep(false);
-        hmSetting.setBrightScreenCancel();
+        //hmSetting.setBrightScreenCancel();
+        hmSetting.setBrightScreen(1)
+        hmSetting.setScreenOff();
+        //hmApp.goBack();
+        //hmApp.exit();
+        hmApp.gotoHome();
     }
 
     fetchInfo(params = '') {
@@ -416,7 +438,9 @@ class Watchdrip {
     startLoader() {
         this.progressWidget.setProperty(hmUI.prop.VISIBLE, true);
         this.progressWidget.setProperty(hmUI.prop.MORE, {angle: this.progressAngle});
-        this.progressTimer = this.globalNS.setInterval(this.updateLoader, PROGRESS_UPDATE_INTERVAL_MS);
+        this.progressTimer = this.globalNS.setInterval(() => {
+            this.updateLoader();
+        }, PROGRESS_UPDATE_INTERVAL_MS);
     }
 
     updateLoader() {
@@ -562,7 +586,7 @@ class Watchdrip {
 
     disableCurrentAlarm() {
         var alarm_id = this.readAlarmId(); //read saved alarm to disable
-        if (!alarm_id && alarm_id !== -1) {
+        if (alarm_id && alarm_id !== -1) {
             debug.log("stop old app alarm");
             hmApp.alarmCancel(alarm_id);
             this.saveAlarmId('-1');
@@ -571,7 +595,7 @@ class Watchdrip {
 
     prepareNextAlarm() {
         this.disableCurrentAlarm();
-        if (this.watchdripConfig != null && this.watchdripConfig.disableUpdates === true) {
+        if (this.watchdripConfig.disableUpdates || !this.watchdripConfig.useAppFetch) {
             if (this.system_alarm_id !== null) {
                 hmApp.alarmCancel(this.system_alarm_id);
             }
@@ -597,6 +621,9 @@ class Watchdrip {
                 hmApp.goBack();
                 break;
             case GoBackType.HIDE:
+                this.hide_page();
+                break;
+            case GoBackType.HIDE_PAGE:
                 gotoSubpage(PagesType.HIDE);
                 break;
         }

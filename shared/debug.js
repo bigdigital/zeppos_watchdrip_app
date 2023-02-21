@@ -28,6 +28,9 @@ export class DebugText {
 
     setEnabled(enabled){
         this.enabled = enabled;
+        if (!enabled) {
+            this.clean();
+        }
     }
 
     log(text) {
