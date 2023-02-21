@@ -108,6 +108,7 @@ class Watchdrip {
                 this.goBackType = GoBackType.HIDE;
                 this.readAlarmConfig();
                 this.watchdripAlarmConfig = {...this.watchdripAlarmConfig, ...data.params};
+                this.saveAlarmConfig();
                 this.fetch_page();
                 break;
             case PagesType.UPDATE_LOCAL:
