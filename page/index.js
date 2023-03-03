@@ -684,20 +684,25 @@ class Watchdrip {
 
 Page({
     onInit(p) {
-        debug = new DebugText();
-        debug.setLines(12);
-        console.log("page onInit");
-        let data = {page: PagesType.MAIN};
         try {
-            if (!(!p || p === 'undefined')) {
-                data = JSON.parse(p);
+            debug = new DebugText();
+            debug.setLines(12);
+            console.log("page onInit");
+            let data = {page: PagesType.MAIN};
+            try {
+                if (!(!p || p === 'undefined')) {
+                    data = JSON.parse(p);
+                }
+            } catch (e) {
+                data = {page: p}
             }
-        } catch (e) {
-            data = {page: p}
-        }
 
-        watchdrip = new Watchdrip()
-        watchdrip.start(data);
+            watchdrip = new Watchdrip()
+            watchdrip.start(data);
+        } catch (e) {
+            console.log('LifeCycle Error', e)
+            e && e.stack && e.stack.split(/\n/).forEach((i) => console.log('error stack', i))
+        }
     },
     build() {
         logger.debug("page build invoked");
