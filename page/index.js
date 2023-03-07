@@ -309,6 +309,10 @@ class Watchdrip {
                 const bgTimeOlder = this.isTimeout(this.watchdripData.getBg().time, XDRIP_UPDATE_INTERVAL_MS);
                 const statusNowOlder = this.isTimeout(this.watchdripData.getStatus().now, XDRIP_UPDATE_INTERVAL_MS);
                 if (bgTimeOlder || statusNowOlder) {
+                    if (!this.isTimeout(this.lastUpdateAttempt, DATA_STALE_TIME_MS)) {
+                        debug.log("wait DATA_STALE_TIME");
+                        return;
+                    }
                     debug.log("data older than sensor update interval");
                     this.fetchInfo();
                     return;
@@ -386,6 +390,10 @@ class Watchdrip {
                 this.handleGoBack();
             }
             return;
+        }
+
+        if (params === "" ){
+            params = WATCHDRIP_ALARM_CONFIG_DEFAULTS.fetchParams;
         }
 
         if (isDisplay) {
