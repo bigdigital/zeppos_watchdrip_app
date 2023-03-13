@@ -10,6 +10,7 @@ import {
     DATA_UPDATE_INTERVAL_MS,
     PROGRESS_ANGLE_INC,
     PROGRESS_UPDATE_INTERVAL_MS,
+    USE_FILE_INFO_STORAGE,
     XDRIP_UPDATE_INTERVAL_MS,
 } from "../utils/config/constants";
 import {
@@ -19,6 +20,8 @@ import {
     WATCHDRIP_CONFIG_DEFAULTS,
     WATCHDRIP_CONFIG_LAST_UPDATE,
     WF_INFO,
+    WF_INFO_DIR,
+    WF_INFO_FILE,
     WF_INFO_LAST_UPDATE,
     WF_INFO_LAST_UPDATE_ATTEMPT,
     WF_INFO_LAST_UPDATE_SUCCESS,
@@ -90,6 +93,7 @@ class Watchdrip {
         this.fetchMode = FetchMode.DISPLAY;
 
         this.readConfig();
+        this.createWatchdripDir();
         debug.setEnabled(this.watchdripConfig.showLog);
     }
 
@@ -162,7 +166,6 @@ class Watchdrip {
         hmSetting.setBrightScreen(60);
         hmApp.setScreenKeep(true);
         this.watchdripData = new WatchdripData(this.timeSensor);
-        this.readInfo();
         let pkg = hmApp.packageInfo();
         this.versionTextWidget = hmUI.createWidget(hmUI.widget.TEXT, {...VERSION_TEXT, text: "v" + pkg.version});
         this.messageTextWidget = hmUI.createWidget(hmUI.widget.TEXT, {...MESSAGE_TEXT, text: ""});
@@ -185,6 +188,7 @@ class Watchdrip {
             if (this.readInfo()) {
                 this.updateWidgets();
             }
+            this.fetchInfo();
             this.startDataUpdates();
         }
 
@@ -282,7 +286,24 @@ class Watchdrip {
     }
 
     isTimeout(time, timeout_ms) {
+        if (!time) {
+            return false;
+        }
         return this.timeSensor.utc - time > timeout_ms;
+    }
+
+    handleRareCases() {
+        let fetch = false;
+        if (this.lastUpdateAttempt == null) {
+            debug.log("initial fetch");
+            fetch = true;
+        } else if (this.isTimeout(this.lastUpdateAttempt, DATA_STALE_TIME_MS)) {
+            debug.log("the side app not responding, force update again");
+            fetch = true;
+        }
+        if (fetch) {
+            this.fetchInfo();
+        }
     }
 
     checkUpdates() {
@@ -294,18 +315,22 @@ class Watchdrip {
         }
         let lastInfoUpdate = this.readLastUpdate();
         if (!lastInfoUpdate) {
-            if (this.lastUpdateAttempt == null) {
-                debug.log("initial fetch");
-                this.fetchInfo();
-                return;
-            }
-            if (this.isTimeout(this.lastUpdateAttempt, DATA_STALE_TIME_MS)) {
-                debug.log("the side app not responding, force update again");
-                this.fetchInfo();
-                return;
-            }
+            this.handleRareCases();
         } else {
             if (this.lastUpdateSucessful) {
+                if (this.lastInfoUpdate !== lastInfoUpdate) {
+                    //update widgets because the data was modified outside the current scope
+                    debug.log("update from remote");
+                    this.readInfo();
+                    this.lastInfoUpdate = lastInfoUpdate;
+                    this.updateWidgets();
+                    return;
+                }
+                if (this.isTimeout(lastInfoUpdate, this.updateIntervals)) {
+                    debug.log("reached updateIntervals");
+                    this.fetchInfo();
+                    return;
+                }
                 const bgTimeOlder = this.isTimeout(this.watchdripData.getBg().time, XDRIP_UPDATE_INTERVAL_MS);
                 const statusNowOlder = this.isTimeout(this.watchdripData.getStatus().now, XDRIP_UPDATE_INTERVAL_MS);
                 if (bgTimeOlder || statusNowOlder) {
@@ -317,32 +342,10 @@ class Watchdrip {
                     this.fetchInfo();
                     return;
                 }
-                if (this.isTimeout(lastInfoUpdate, this.updateIntervals)) {
-                    debug.log("reached updateIntervals");
-                    this.fetchInfo();
-                    return;
-                }
-                if (this.lastInfoUpdate === lastInfoUpdate) {
-                    //data not modified from outside scope so nothing to do
-                    //debug.log("data not modified");
-                    return;
-                }
-                //update widgets because the data was modified outside the current scope
-                debug.log("update from remote");
-                this.readInfo();
-                this.lastInfoUpdate = lastInfoUpdate;
-                this.updateWidgets();
+                //data not modified from outside scope so nothing to do
+                debug.log("data not modified");
             } else {
-                if (this.lastUpdateAttempt == null) {
-                    debug.log("initial fetch");
-                    this.fetchInfo();
-                    return;
-                }
-                if (this.isTimeout(this.lastUpdateAttempt, DATA_STALE_TIME_MS)) {
-                    debug.log("reached DATA_STALE_TIME_MS");
-                    this.fetchInfo();
-                    return;
-                }
+                this.handleRareCases();
             }
         }
     }
@@ -392,7 +395,7 @@ class Watchdrip {
             return;
         }
 
-        if (params === "" ){
+        if (params === "") {
             params = WATCHDRIP_ALARM_CONFIG_DEFAULTS.fetchParams;
         }
 
@@ -409,7 +412,7 @@ class Watchdrip {
             }, {timeout: 5000})
             .then((data) => {
                 debug.log("received data");
-                const {result: info = {}} = data;
+                let {result: info = {}} = data;
                 //debug.log(info);
                 try {
                     if (info.error) {
@@ -418,13 +421,15 @@ class Watchdrip {
                         return;
                     }
                     let dataInfo = str2json(info);
+                    this.lastInfoUpdate = this.saveInfo(info);
+                    info = null;
                     if (isDisplay) {
                         this.watchdripData.setData(dataInfo);
                         this.watchdripData.updateTimeDiff();
+                        dataInfo = null;
 
                         this.updateWidgets();
                     }
-                    this.lastInfoUpdate = this.saveInfo(info);
                 } catch (e) {
                     debug.log("error:" + e);
                 }
@@ -531,17 +536,27 @@ class Watchdrip {
     }
 
     readInfo() {
-        let info = hmFS.SysProGetChars(WF_INFO);
-        let data = {};
+        let info = "";
+        if (USE_FILE_INFO_STORAGE) {
+            info = fs.readTextFile(WF_INFO_FILE);
+        } else {
+            info = hmFS.SysProGetChars(WF_INFO);
+        }
         if (info) {
+            let data = {};
             try {
                 data = str2json(info);
+                info = null;
+                debug.log("data was read");
+                this.watchdripData.setData(data);
+                this.watchdripData.timeDiff = 0;
             } catch (e) {
 
             }
+            data = null;
+            return true
         }
-        this.watchdripData.setData(data);
-        return data;
+        return false;
     }
 
     readLastUpdate() {
@@ -558,8 +573,22 @@ class Watchdrip {
         hmFS.SysProSetBool(WF_INFO_LAST_UPDATE_SUCCESS, this.lastUpdateSucessful);
     }
 
+    createWatchdripDir() {
+        if (USE_FILE_INFO_STORAGE) {
+            if (!fs.statSync(WF_INFO_DIR)) {
+                fs.mkdirSync(WF_INFO_DIR);
+            }
+            // const [fileNameArr] = hmFS.readdir("/storage");
+            // debug.log(fileNameArr);
+        }
+    }
+
     saveInfo(info) {
-        hmFS.SysProSetChars(WF_INFO, info);
+        if (USE_FILE_INFO_STORAGE) {
+            fs.writeTextFile(WF_INFO_FILE, info);
+        } else {
+            hmFS.SysProSetChars(WF_INFO, info);
+        }
         this.lastUpdateSucessful = true;
         let time = this.timeSensor.utc;
         hmFS.SysProSetInt64(WF_INFO_LAST_UPDATE, time);
@@ -650,7 +679,6 @@ class Watchdrip {
                 logger.log("receive data");
                 const {result = {}} = data;
                 debug.log(`Received file size: ${result.length} bytes`);
-                logger.log(`Received file size: ${result.length} bytes`);
                 let filePath = fs.fullPath(fileName);
                 debug.log(filePath);
                 let file = fs.getSelfPath() + "/assets";
@@ -661,10 +689,6 @@ class Watchdrip {
                 const hex = Buffer.from(result, "base64");
 
                 fs.writeRawFileSync(filePath, hex);
-
-                const [fileNameArr2] = hmFS.readdir(file);
-
-                debug.log(fileNameArr2);
                 var res = fs.statSync(filePath);
                 debug.log(res);
                 // Image view
@@ -694,7 +718,7 @@ Page({
     onInit(p) {
         try {
             debug = new DebugText();
-            debug.setLines(12);
+            debug.setLines(20);
             console.log("page onInit");
             let data = {page: PagesType.MAIN};
             try {
@@ -708,8 +732,8 @@ Page({
             watchdrip = new Watchdrip()
             watchdrip.start(data);
         } catch (e) {
-            console.log('LifeCycle Error', e)
-            e && e.stack && e.stack.split(/\n/).forEach((i) => console.log('error stack', i))
+            debug.log('LifeCycle Error ' + e)
+            e && e.stack && e.stack.split(/\n/).forEach((i) => debug.log('error stack:' + i))
         }
     },
     build() {

@@ -10,8 +10,6 @@ export const SERVER_INFO_URL = "info.json";
 export const SERVER_PUT_TREATMENTS_URL = "add_treatments";
 export const SERVER_IMAGE_URL = "image.png";
 
-export const FILES_DIR = "/storage/watchdrip/";
-
 export const Commands = {
   getInfo: "CMD_GET_INFO",
   putTreatment: "CMD_PUT_TREATMENTS",
@@ -37,3 +35,7 @@ export const Colors = {
 
 /*set to true on wf creation*/
 export const TEST_DATA = false;
+export const USE_FILE_INFO_STORAGE = true;
+
+export const MMOLL_TO_MGDL = 18.0182;
+export const GRAPH_LIMIT = 18;
