@@ -21,6 +21,58 @@
     }
   },
   "targets": {
+    "mi-band7": {
+      "module": {
+        "page": {
+          "pages": ["page/index"]
+        },
+        "app-side": {
+          "path": "app-side/index"
+        }
+      },
+      "platforms": [
+        {
+          "name": "band7",
+          "deviceSource": 252
+        },
+        {
+          "name": "band7_1",
+          "deviceSource": 253
+        },
+        {
+          "name": "band7_2",
+          "deviceSource": 254
+        },{
+          "name": "l66",
+          "deviceSource": 260
+        },
+        {
+          "name": "l66w",
+          "deviceSource": 261
+        },
+        {
+          "name": "l66_1",
+          "deviceSource": 262
+        },
+        {
+          "name": "l66w_2",
+          "deviceSource": 263
+        },
+        {
+          "name": "l66_3",
+          "deviceSource": 264
+        },
+        {
+          "name": "l66_4",
+          "deviceSource": 265
+        },
+        {
+          "name": "l66_5",
+          "deviceSource": 266
+        }
+      ],
+      "designWidth": 194
+    },
     "common": {
       "module": {
         "page": {
@@ -102,7 +154,7 @@
         {
           "name": "band7",
           "deviceSource": 252
-        }, 
+        },
         {
           "name": "band7_1",
           "deviceSource": 253
