@@ -15,13 +15,15 @@ const fetchInfo = async (ctx, url) => {
             if (!response.body)
                 throw Error('No Data')
 
-            return response.body
+            return typeof response.body === 'string' ? JSON.parse(response.body) : response.body
         })
         .then((data) => {
             try {
                 console.log("log", data);
                // const parsed = JSON.stringify(data);
                // console.log("log", parsed);
+
+
                 resp = data;
             } catch (error) {
                 throw Error(error.message)
