@@ -12,7 +12,7 @@
     "description": "The watchface for watchdrip application",
     "icon": "icon.png"
   },
-  "permissions": [],
+  "permissions": ["data:os.device.info", "device:os.alarm"],
   "runtime": {
     "apiVersion": {
       "compatible": "1.0.0",
@@ -100,7 +100,7 @@
           "deviceSource": 242
         },
         {
-          "name": "gtr3-pro-meilin",
+          "name": "gtr3-pro-merlin",
           "deviceSource": 6095106
         },
         {
@@ -144,6 +144,10 @@
           "deviceSource": 7930113
         },
         {
+          "name": "gtr4-w2",
+          "deviceSource": 7864577
+        },
+        {
           "name": "falcon1",
           "deviceSource": 414
         },
@@ -162,6 +166,66 @@
         {
           "name": "band7_2",
           "deviceSource": 254
+        },
+        {
+          "name": "balance_1",
+          "deviceSource": 8519936
+        },
+        {
+          "name": "balance_2",
+          "deviceSource": 8519937
+        },
+        {
+          "name": "balance_3",
+          "deviceSource": 8519939
+        },
+        {
+          "name": "cheetah_square",
+          "deviceSource": 8257793
+        },
+        {
+          "name": "cheetah_round_1",
+          "deviceSource": 8192256
+        },
+        {
+          "name": "cheetah_round_2",
+          "deviceSource": 8192257
+        },
+        {
+          "name": "trex_ultra_1",
+          "deviceSource": 6553856
+        },
+        {
+          "name": "trex_ultra_2",
+          "deviceSource": 6553857
+        },
+        {
+          "name": "bip_5",
+          "deviceSource": 8454401
+        },
+        {
+          "name": "cheetah_pro_1",
+          "deviceSource": 8126720
+        },
+        {
+          "name": "cheetah_pro_2",
+          "deviceSource": 8126721
+        },
+        {
+          "name": "gtr_mini_1",
+          "deviceSource": 250
+        },
+        {
+          "name": "gtr_mini_2",
+          "deviceSource": 251
+        },
+        {
+          "name": "gts_mini_1",
+          "deviceSource": 246
+        },
+        {
+          "name": "gts_mini_2",
+          "deviceSource": 247
         }
       ],
       "designWidth": 480
