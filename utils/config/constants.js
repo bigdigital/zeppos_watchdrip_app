@@ -1,6 +1,6 @@
 import {MINUTE_IN_MS, SECOND_IN_MS} from "../../shared/date";
 
-export const DATA_TIMER_UPDATE_INTERVAL_MS = SECOND_IN_MS * 5;
+export const DATA_TIMER_UPDATE_INTERVAL_MS = SECOND_IN_MS * 10;
 export const DATA_UPDATE_INTERVAL_MS = MINUTE_IN_MS * 10;
 
 export const DATA_STALE_TIME_MS = MINUTE_IN_MS * 2;
@@ -35,7 +35,6 @@ export const Colors = {
 
 /*set to true on wf creation*/
 export const TEST_DATA = false;
-export const USE_FILE_INFO_STORAGE = true;
 
 export const MMOLL_TO_MGDL = 18.0182;
 export const GRAPH_LIMIT = 18;

@@ -10,22 +10,11 @@ import {
     DATA_UPDATE_INTERVAL_MS,
     PROGRESS_ANGLE_INC,
     PROGRESS_UPDATE_INTERVAL_MS,
-    USE_FILE_INFO_STORAGE,
     XDRIP_UPDATE_INTERVAL_MS,
 } from "../utils/config/constants";
 import {
-    WATCHDRIP_ALARM_CONFIG,
-    WATCHDRIP_ALARM_CONFIG_DEFAULTS,
-    WATCHDRIP_CONFIG,
-    WATCHDRIP_CONFIG_DEFAULTS,
-    WATCHDRIP_CONFIG_LAST_UPDATE,
-    WF_INFO,
-    WF_INFO_DIR,
+    WATCHDRIP_ALARM_SETTINGS_DEFAULTS, WF_DIR,
     WF_INFO_FILE,
-    WF_INFO_LAST_UPDATE,
-    WF_INFO_LAST_UPDATE_ATTEMPT,
-    WF_INFO_LAST_UPDATE_SUCCESS,
-    WF_SYSTEM_ALARM_ID
 } from "../utils/config/global-constants";
 import {
     BG_DELTA_TEXT,
@@ -49,6 +38,8 @@ import * as fs from "./../shared/fs";
 import {WatchdripData} from "../utils/watchdrip/watchdrip-data";
 import {getDataTypeConfig, img} from "../utils/helper";
 import {gotoSubpage} from "../shared/navigate";
+import {WatchdripConfig} from "../utils/watchdrip/config";
+import {Path} from "../utils/path";
 
 const logger = DeviceRuntimeCore.HmLogger.getLogger("watchdrip_app");
 
@@ -77,6 +68,8 @@ const FetchMode = {DISPLAY: 'display', HIDDEN: 'hidden'};
 
 class Watchdrip {
     constructor() {
+
+        this.createWatchdripDir();
         this.timeSensor = hmSensor.createSensor(hmSensor.id.TIME);
         this.vibrate = hmSensor.createSensor(hmSensor.id.VIBRATE);
         this.globalNS = getGlobal();
@@ -91,10 +84,10 @@ class Watchdrip {
         this.intervalTimer = null;
         this.updateIntervals = DATA_UPDATE_INTERVAL_MS;
         this.fetchMode = FetchMode.DISPLAY;
+        this.conf = new WatchdripConfig();
+        debug.setEnabled(this.conf.settings.showLog);
 
-        this.readConfig();
-        this.createWatchdripDir();
-        debug.setEnabled(this.watchdripConfig.showLog);
+        this.infoFile = new Path("full", WF_INFO_FILE);
     }
 
     start(data) {
@@ -110,14 +103,11 @@ class Watchdrip {
                 break;
             case PagesType.UPDATE:
                 this.goBackType = GoBackType.HIDE;
-                this.readAlarmConfig();
-                this.watchdripAlarmConfig = {...this.watchdripAlarmConfig, ...data.params};
-                this.saveAlarmConfig();
+                this.conf.alarmSettings = {...this.conf.alarmSettings, ...data.params};
                 this.fetch_page();
                 break;
             case PagesType.UPDATE_LOCAL:
                 this.goBackType = GoBackType.HIDE;
-                this.readAlarmConfig();
                 this.fetch_page();
                 break;
             case PagesType.HIDE:
@@ -142,25 +132,6 @@ class Watchdrip {
         }
     }
 
-    readConfig() {
-        var configStr = hmFS.SysProGetChars(WATCHDRIP_CONFIG);
-        if (!configStr) {
-            this.watchdripConfig = WATCHDRIP_CONFIG_DEFAULTS;
-            this.saveConfig();
-        } else {
-            try {
-                this.watchdripConfig = str2json(configStr);
-                this.watchdripConfig = {...WATCHDRIP_CONFIG_DEFAULTS, ...this.watchdripConfig}
-            } catch (e) {
-
-            }
-        }
-    }
-
-    saveConfig() {
-        hmFS.SysProSetChars(WATCHDRIP_CONFIG, json2str(this.watchdripConfig));
-        hmFS.SysProSetInt64(WATCHDRIP_CONFIG_LAST_UPDATE, this.timeSensor.utc);
-    }
 
     main_page() {
         hmSetting.setBrightScreen(60);
@@ -182,7 +153,7 @@ class Watchdrip {
         // this.updateWidgets();
         // return;
 
-        if (this.watchdripConfig.disableUpdates) {
+        if (this.conf.settings.disableUpdates) {
             this.showMessage(getText("data_upd_disabled"));
         } else {
             if (this.readInfo()) {
@@ -217,7 +188,7 @@ class Watchdrip {
     getConfigData() {
         let dataList = [];
 
-        Object.entries(this.watchdripConfig).forEach(entry => {
+        Object.entries(this.conf.settings).forEach(entry => {
             const [key, value] = entry;
             let stateImg = RADIO_OFF
             if (value) {
@@ -255,9 +226,9 @@ class Watchdrip {
                 item_click_func: (list, index) => {
                     debug.log(index);
                     const key = this.configDataList[index].key
-                    let val = this.watchdripConfig[key]
-                    this.watchdripConfig[key] = !val;
-                    this.saveConfig();
+                    let val = this.conf.settings[key]
+                    this.conf.settings[key] = !val;
+                    this.conf.settingsTime = this.timeSensor.utc; // upd settings time
                     //update list
                     this.configScrollList.setProperty(hmUI.prop.UPDATE_DATA, {
                         ...this.getConfigData(),
@@ -354,7 +325,7 @@ class Watchdrip {
         debug.log("fetch_page");
         hmUI.setStatusBarVisible(false);
         this.prepareNextAlarm();
-        if (this.watchdripConfig.disableUpdates || !this.watchdripConfig.useAppFetch) {
+        if (this.conf.settings.disableUpdates || !this.conf.settings.useAppFetch) {
             this.handleGoBack();
             return;
         }
@@ -363,7 +334,7 @@ class Watchdrip {
         this.progressAngle = 0;
         this.stopLoader();
         this.fetchMode = FetchMode.HIDDEN;
-        this.fetchInfo(this.watchdripAlarmConfig.fetchParams);
+        this.fetchInfo(this.conf.alarmSettings.fetchParams);
     }
 
     hide_page() {
@@ -396,7 +367,7 @@ class Watchdrip {
         }
 
         if (params === "") {
-            params = WATCHDRIP_ALARM_CONFIG_DEFAULTS.fetchParams;
+            params = WATCHDRIP_ALARM_SETTINGS_DEFAULTS.fetchParams;
         }
 
         if (isDisplay) {
@@ -536,23 +507,11 @@ class Watchdrip {
     }
 
     readInfo() {
-        let info = "";
-        if (USE_FILE_INFO_STORAGE) {
-            info = fs.readTextFile(WF_INFO_FILE);
-        } else {
-            info = hmFS.SysProGetChars(WF_INFO);
-        }
-        if (info) {
-            let data = {};
-            try {
-                data = str2json(info);
-                info = null;
+        let data = this.infoFile.fetchJSON();
+        if (data) {
                 debug.log("data was read");
                 this.watchdripData.setData(data);
                 this.watchdripData.timeDiff = 0;
-            } catch (e) {
-
-            }
             data = null;
             return true
         }
@@ -560,70 +519,47 @@ class Watchdrip {
     }
 
     readLastUpdate() {
-        let lastInfoUpdate = hmFS.SysProGetInt64(WF_INFO_LAST_UPDATE);
-        this.lastUpdateAttempt = hmFS.SysProGetInt64(WF_INFO_LAST_UPDATE_ATTEMPT);
-        this.lastUpdateSucessful = hmFS.SysProGetBool(WF_INFO_LAST_UPDATE_SUCCESS);
-        return lastInfoUpdate;
+        debug.log("readLastUpdate");
+        this.conf.read();
+        this.lastUpdateAttempt = this.conf.infoLastUpdAttempt;
+        this.lastUpdateSucessful = this.conf.infoLastUpdSucess;
+
+        return this.conf.infoLastUpd;
     }
 
     resetLastUpdate() {
+        debug.log("resetLastUpdate");
         this.lastUpdateAttempt = this.timeSensor.utc;
-        hmFS.SysProSetInt64(WF_INFO_LAST_UPDATE_ATTEMPT, this.lastUpdateAttempt);
         this.lastUpdateSucessful = false;
-        hmFS.SysProSetBool(WF_INFO_LAST_UPDATE_SUCCESS, this.lastUpdateSucessful);
+        this.conf.infoLastUpdAttempt = this.lastUpdateAttempt
+        this.conf.infoLastUpdSucess = this.lastUpdateSucessful;
     }
 
     createWatchdripDir() {
-        if (USE_FILE_INFO_STORAGE) {
-            if (!fs.statSync(WF_INFO_DIR)) {
-                fs.mkdirSync(WF_INFO_DIR);
-            }
-            // const [fileNameArr] = hmFS.readdir("/storage");
-            // debug.log(fileNameArr);
+        let dir = new Path("full", WF_DIR);
+        if (!dir.exists()) {
+            dir.mkdir();
         }
     }
 
     saveInfo(info) {
-        if (USE_FILE_INFO_STORAGE) {
-            fs.writeTextFile(WF_INFO_FILE, info);
-        } else {
-            hmFS.SysProSetChars(WF_INFO, info);
-        }
+        debug.log("saveInfo");
+        this.infoFile.overrideWithText(info);
         this.lastUpdateSucessful = true;
         let time = this.timeSensor.utc;
-        hmFS.SysProSetInt64(WF_INFO_LAST_UPDATE, time);
-        hmFS.SysProSetBool(WF_INFO_LAST_UPDATE_SUCCESS, this.lastUpdateSucessful);
+        this.conf.infoLastUpd = time
+        this.conf.infoLastUpdSucess = this.lastUpdateSucessful;
         return time;
     }
 
     saveAlarmId(alarm_id) {
-        hmFS.SysProSetInt64(WF_SYSTEM_ALARM_ID, alarm_id);
-    }
-
-    readAlarmId() {
-        return hmFS.SysProGetInt64(WF_SYSTEM_ALARM_ID);
-    }
-
-    readAlarmConfig() {
-        var configStr = hmFS.SysProGetChars(WATCHDRIP_ALARM_CONFIG);
-        if (!configStr) {
-            this.watchdripAlarmConfig = WATCHDRIP_ALARM_CONFIG_DEFAULTS;
-            this.saveAlarmConfig();
-        } else {
-            try {
-                this.watchdripAlarmConfig = str2json(configStr);
-            } catch (e) {
-
-            }
-        }
-    }
-
-    saveAlarmConfig() {
-        hmFS.SysProSetChars(WATCHDRIP_ALARM_CONFIG, json2str(this.watchdripAlarmConfig));
+        debug.log("saveAlarmId");
+        this.conf.alarm_id = alarm_id;
     }
 
     disableCurrentAlarm() {
-        var alarm_id = this.readAlarmId(); //read saved alarm to disable
+        debug.log("disableCurrentAlarm");
+        const alarm_id = this.conf.alarm_id; //read saved alarm to disable
         if (alarm_id && alarm_id !== -1) {
             debug.log("stop old app alarm");
             hmApp.alarmCancel(alarm_id);
@@ -633,19 +569,19 @@ class Watchdrip {
 
     prepareNextAlarm() {
         this.disableCurrentAlarm();
-        if (this.watchdripConfig.disableUpdates || !this.watchdripConfig.useAppFetch) {
+        if (this.conf.settings.disableUpdates || !this.conf.settings.useAppFetch) {
             if (this.system_alarm_id !== null) {
                 hmApp.alarmCancel(this.system_alarm_id);
             }
             return;
         }
-        debug.log("Next alarm in " + this.watchdripAlarmConfig.fetchInterval + "s");
+        debug.log("Next alarm in " + this.conf.alarmSettings.fetchInterval + "s");
         if (this.system_alarm_id == null) {
             this.system_alarm_id = hmApp.alarmNew({
                 appid: appId,
                 url: "page/index",
                 param: PagesType.UPDATE_LOCAL,
-                delay: this.watchdripAlarmConfig.fetchInterval,
+                delay: this.conf.alarmSettings.fetchInterval,
             });
             this.saveAlarmId(this.system_alarm_id);
         }
@@ -708,6 +644,7 @@ class Watchdrip {
 
     onDestroy() {
         //this.disableCurrentAlarm(); //do not stop alarm on destroy
+        this.conf.save();
         this.stopDataUpdates();
         this.vibrate.stop();
         hmSetting.setBrightScreenCancel();
