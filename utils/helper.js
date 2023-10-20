@@ -31,3 +31,13 @@ export const getDataTypeConfig = (id_type, i_start, i_end) => {
         type_id: id_type, // item_config number used
     };
 };
+
+export function getApiLevel() {
+    if  (typeof API_LEVEL === 'undefined'){
+        return 1;
+    }
+    return API_LEVEL;
+}
+
+export const API_LEVEL_COMPAT = getApiLevel();
+

@@ -40,7 +40,7 @@ export class Path {
     }
 
     stat() {
-        if (this.scope == "data") {
+        if (this.scope === "data") {
             return hmFS.stat(this.relativePath);
         } else {
             return hmFS.stat_asset(this.relativePath);
@@ -111,7 +111,9 @@ export class Path {
         const buf = this.fetch(limit);
         if (!buf) return buf;
         const view = new Uint8Array(buf);
-        return FsTools.decodeUtf8(view, limit)[0];
+        const text = FsTools.decodeUtf8(view, limit)[0];
+        //console.log(text);
+        return text;
     }
 
     fetchJSON() {
@@ -129,6 +131,7 @@ export class Path {
     }
 
     overrideWithText(text) {
+        //console.log(text);
         return this.override(FsTools.strToUtf8(text));
     }
 

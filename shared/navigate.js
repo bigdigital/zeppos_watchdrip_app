@@ -6,6 +6,8 @@
 * @params additional params which would be added
  */
 
+export const GoBackType = {NONE: 'none', GO_BACK: 'go_back', HIDE_PAGE: 'hide_page', HIDE: 'hide'};
+
 export function gotoSubpage(page, params, appid) {
     if (!params) params = {};
 
@@ -28,4 +30,31 @@ export function gotoSubpage(page, params, appid) {
     } else {
         hmApp.gotoPage(obj);
     }
+}
+
+export function handleGoBack(goBackType) {
+    switch (goBackType) {
+        case GoBackType.NONE:
+            break;
+        case GoBackType.GO_BACK:
+            hmApp.goBack();
+            break;
+        case GoBackType.HIDE:
+            hide_page();
+            break;
+        case GoBackType.HIDE_PAGE:
+            gotoSubpage(PagesType.HIDE);
+            break;
+    }
+}
+
+
+export function hide_page() {
+    hmApp.setScreenKeep(false);
+    //hmSetting.setBrightScreenCancel();
+    hmSetting.setBrightScreen(1)
+    hmSetting.setScreenOff();
+    //hmApp.goBack();
+    //hmApp.exit();
+    hmApp.gotoHome();
 }

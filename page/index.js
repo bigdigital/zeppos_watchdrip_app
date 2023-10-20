@@ -37,9 +37,10 @@ import {
 import * as fs from "./../shared/fs";
 import {WatchdripData} from "../utils/watchdrip/watchdrip-data";
 import {getDataTypeConfig, img} from "../utils/helper";
-import {gotoSubpage} from "../shared/navigate";
+import * as nav from "../shared/navigate";
 import {WatchdripConfig} from "../utils/watchdrip/config";
 import {Path} from "../utils/path";
+
 
 const logger = DeviceRuntimeCore.HmLogger.getLogger("watchdrip_app");
 
@@ -55,7 +56,7 @@ typeof Watchdrip
 */
 var watchdrip = null;
 
-const GoBackType = {NONE: 'none', GO_BACK: 'go_back', HIDE_PAGE: 'hide_page', HIDE: 'hide'};
+
 const PagesType = {
     MAIN: 'main',
     UPDATE: 'update',
@@ -173,14 +174,14 @@ class Watchdrip {
         hmUI.createWidget(hmUI.widget.BUTTON, {
             ...COMMON_BUTTON_SETTINGS,
             click_func: (button_widget) => {
-                gotoSubpage(PagesType.CONFIG);
+                nav.gotoSubpage(PagesType.CONFIG);
             },
         });
 
         hmUI.createWidget(hmUI.widget.BUTTON, {
             ...COMMON_BUTTON_ADD_TREATMENT,
             click_func: (button_widget) => {
-                gotoSubpage(PagesType.ADD_TREATMENT);
+                nav.gotoSubpage(PagesType.ADD_TREATMENT);
             },
         });
     }
@@ -215,6 +216,10 @@ class Watchdrip {
 
     add_treatment_page() {
         //not implemented
+    }
+
+    bg_service_page(){
+
     }
 
     config_page() {
@@ -337,14 +342,8 @@ class Watchdrip {
         this.fetchInfo(this.conf.alarmSettings.fetchParams);
     }
 
-    hide_page() {
-        hmApp.setScreenKeep(false);
-        //hmSetting.setBrightScreenCancel();
-        hmSetting.setBrightScreen(1)
-        hmSetting.setScreenOff();
-        //hmApp.goBack();
-        //hmApp.exit();
-        hmApp.gotoHome();
+    handleGoBack(){
+        nav.handleGoBack(this.goBackType);
     }
 
     fetchInfo(params = '') {
@@ -584,22 +583,6 @@ class Watchdrip {
                 delay: this.conf.alarmSettings.fetchInterval,
             });
             this.saveAlarmId(this.system_alarm_id);
-        }
-    }
-
-    handleGoBack() {
-        switch (this.goBackType) {
-            case GoBackType.NONE:
-                break;
-            case GoBackType.GO_BACK:
-                hmApp.goBack();
-                break;
-            case GoBackType.HIDE:
-                this.hide_page();
-                break;
-            case GoBackType.HIDE_PAGE:
-                gotoSubpage(PagesType.HIDE);
-                break;
         }
     }
 
