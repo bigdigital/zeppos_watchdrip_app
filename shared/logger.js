@@ -2,6 +2,7 @@ import { isZeppOS1, isZeppOS2, isSideService, _r } from '../core/common/common'
 
 let logger = null
 
+
 if (isZeppOS1()) {
   // zeppos 1.0
   logger = DeviceRuntimeCore.HmLogger

@@ -6,11 +6,12 @@ import {str2json} from "../shared/data";
 
 import {connectStatus} from '@zos/ble'
 import {LocalInfoStorage} from "../utils/watchdrip/localInfoStorage";
-import {createDeviceMessage} from "../core/device/device-message";
-import {MessageBuilder} from "../shared/message";
-import {getPackageInfo} from "../core/common/common";
-import {wrapperMessage} from "../core/common/message";
-import {WATCHDRIP_APP_ID} from "../utils/config/global-constants";
+// import {createDeviceMessage} from "../core/device/device-message";
+// import {MessageBuilder} from "../shared/message";
+// import {getPackageInfo} from "../core/common/common";
+// import {wrapperMessage} from "../core/common/message";
+// import {WATCHDRIP_APP_ID} from "../utils/config/global-constants";
+// import {BasePage} from "../core/device/base-page";
 
 const logger = log.getLogger("fetch-service");
 
@@ -43,18 +44,10 @@ class WatchdripService {
         logger.log("initConnection");
         this.connectionActive = true;
 
-        const appDevicePort = 20
-        const appSidePort = 0
-
         //we need to recreate connection to force start side app
-        const messageBuilder = new MessageBuilder({
-            appId: WATCHDRIP_APP_ID,
-            appDevicePort,
-            appSidePort,
-        })
-
-        messaging =  wrapperMessage(messageBuilder)
-        messaging.connect();
+      //  messaging.disConnect();
+       // messaging = createDeviceMessage();
+       // messaging.connect();
     }
 
     dropConnection() {
@@ -62,7 +55,7 @@ class WatchdripService {
             return;
         }
         logger.log("dropConnection");
-        messaging.disConnect();
+     //   messaging.disConnect();
         this.connectionActive = false;
     }
 
@@ -88,7 +81,7 @@ class WatchdripService {
         );
         //this.resetLastUpdate();
 
-        if (connectStatus() === false) {
+        if (!connectStatus()) {
             logger.log("No BT Connection");
 
             return;
@@ -97,8 +90,8 @@ class WatchdripService {
 
 
         let params = ''
-        messaging
-            .request({
+        console.log('do request');
+        messaging.request({
                 method: Commands.getInfo,
                 params: params,
             }, {timeout: 5000})
@@ -113,7 +106,7 @@ class WatchdripService {
                         return;
                     }
                     let dataInfo = str2json(info);
-                    logger.log(dataInfo);
+                    logger.log(info);
                     info = null;
 
                 } catch (e) {
@@ -124,7 +117,7 @@ class WatchdripService {
                 logger.log("fetch error:" + error);
             })
             .finally(() => {
-                this.dropConnection();
+                //this.dropConnection();
             });
     }
 

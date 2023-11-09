@@ -1,50 +1,35 @@
 import { createDeviceMessage } from './device-message'
 import { fileTransferLib } from './device-file-transfer'
-import { merge } from '../common/merge'
-import { pluginService } from '../common/plugin-service'
-import { httpRequestPlugin } from './httpRequest'
 
-function BaseApp({ globalData = {}, onCreate, onDestroy, ...other } = {}) {
-  const opts = {
+export function BaseApp({ globalData = {}, onCreate, onDestroy, ...other } = {}) {
+  return {
     globalData,
     ...other,
     onCreate(...opts) {
-      this.messaging = this.globalData.messaging = createDeviceMessage()
-      this.messaging
+      const messaging = createDeviceMessage()
+      this.globalData.messaging = messaging
+
+      messaging
         .onCall(this.onCall?.bind(this))
         .onRequest(this.onRequest?.bind(this))
         .connect()
 
       fileTransferLib.onFile(this.onReceivedFile?.bind(this))
 
-      for (let i = 0; i <= BaseApp.mixins.length - 1; i++) {
-        const m = BaseApp.mixins[i]
-        m & m.handler.onCreate?.apply(this, opts)
-      }
-
       onCreate?.apply(this, opts)
     },
     onDestroy(...opts) {
-      onDestroy?.apply(this, opts)
+      const messaging = this.globalData.messaging
+      messaging.offOnCall().offOnRequest().disConnect()
 
-      for (let i = BaseApp.mixins.length - 1; i >= 0; i--) {
-        const m = BaseApp.mixins[i]
-        m & m.handler.onDestroy?.apply(this, opts)
-      }
-
-      this.messaging.offOnCall().offOnRequest().disConnect()
       fileTransferLib.offFile()
+      onDestroy?.apply(this, opts)
+    },
+    httpRequest(data) {
+      return messaging.request({
+        method: 'http.request',
+        params: data,
+      })
     },
   }
-
-  BaseApp.handle(opts)
-
-  return opts
 }
-
-merge(BaseApp, pluginService)
-
-BaseApp.init()
-BaseApp.use(httpRequestPlugin)
-
-export { BaseApp, merge }

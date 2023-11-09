@@ -12,6 +12,7 @@ import * as hmUI from "@zos/ui";
 import {GoBackType} from "../shared/navigate";
 import {WatchdripConfig} from "../utils/watchdrip/config";
 import {FETCH_SERVICE_ACTION, QUERY_PERMISSION_STATUS} from "../utils/config/constants";
+import {BasePage} from "@zeppos/zml/base-page";
 
 const logger = log.getLogger("watchdrip_app");
 

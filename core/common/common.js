@@ -10,6 +10,7 @@ if (typeof __$$R$$__ !== 'undefined') {
 
 export { _r }
 
+
 let getPackageInfo = null
 
 if (isZeppOS1()) {
@@ -98,8 +99,4 @@ export function isZeppOS() {
 
 export function isSideService() {
   return typeof messaging !== 'undefined'
-}
-
-export function isPlainObject(value) {
-  return value?.constructor === Object
 }

@@ -1,7 +1,5 @@
 import { Logger } from '../../shared/logger'
-import { isZeppOS, isPlainObject } from './common'
-import { MessagePayloadDataTypeOp } from '../../shared/message'
-import { buf2str, buf2json, buf2bin } from '../../shared/data'
+import { isZeppOS } from './common'
 
 const logger = Logger.getLogger('message-builder')
 
@@ -10,30 +8,15 @@ const requestTimeout = 60000
 
 const DEBUG = __DEBUG__
 
-const HM_RPC = 'hmrpcv1'
-
 export function wrapperMessage(messageBuilder) {
   return {
     shakeTimeout,
     requestTimeout,
-    transport: messageBuilder,
     onCall(cb) {
       if (!cb) return this
-      messageBuilder.on('call', ({ contentType, payload }) => {
-        switch (contentType) {
-          case MessagePayloadDataTypeOp.JSON:
-            payload = buf2json(payload)
-            break
-          case MessagePayloadDataTypeOp.TEXT:
-            payload = buf2str(payload)
-            break
-          case MessagePayloadDataTypeOp.BIN:
-          default:
-            payload = buf2bin(payload)
-            break
-        }
-
-        cb && cb(payload)
+      messageBuilder.on('call', ({ payload }) => {
+        const jsonRpc = messageBuilder.buf2Json(payload)
+        cb && cb(jsonRpc)
       })
 
       return this
@@ -44,58 +27,29 @@ export function wrapperMessage(messageBuilder) {
     },
     call(data) {
       isZeppOS() && messageBuilder.fork(this.shakeTimeout)
-      data = isPlainObject(data)
-        ? opts.contentType
-          ? data
-          : {
-              jsonrpc: HM_RPC,
-              ...data,
-            }
-        : data
-      return messageBuilder.call(data)
+      return messageBuilder.call({
+        jsonrpc: 'hmrpcv1',
+        ...data,
+      })
     },
     onRequest(cb) {
       if (!cb) return this
       messageBuilder.on('request', (ctx) => {
-        let payload = ctx.request.payload
-
-        switch (ctx.request.contentType) {
-          case MessagePayloadDataTypeOp.JSON:
-            payload = buf2json(payload)
-            break
-          case MessagePayloadDataTypeOp.TEXT:
-            payload = buf2str(payload)
-            break
-          case MessagePayloadDataTypeOp.BIN:
-          default:
-            payload = buf2bin(payload)
-            break
-        }
-
-
+        const jsonRpc = messageBuilder.buf2Json(ctx.request.payload)
         cb &&
-          cb(payload, (error, data, opts = {}) => {
-            if (ctx.request.contentType === MessagePayloadDataTypeOp.JSON && payload?.jsonrpc === HM_RPC) {
-              if (error) {
-                return ctx.response({
-                  data: {
-                    jsonrpc: HM_RPC,
-                    error,
-                  },
-                })
-              }
-
+          cb(jsonRpc, (error, data) => {
+            if (error) {
               return ctx.response({
                 data: {
-                  jsonrpc: HM_RPC,
-                  result: data,
+                  error,
                 },
               })
             }
 
             return ctx.response({
-              data,
-              ...opts
+              data: {
+                result: data,
+              },
             })
           })
       })
@@ -110,35 +64,24 @@ export function wrapperMessage(messageBuilder) {
       messageBuilder.off('request', cb)
       return this
     },
-    request(data, opts = {}) {
+    request(data) {
       isZeppOS() && messageBuilder.fork(this.shakeTimeout)
       DEBUG &&
         logger.debug(
           'current request count=>%d',
           messageBuilder.getRequestCount(),
         )
-
-      data = isPlainObject(data)
-        ? opts.contentType
-          ? data
-          : {
-              jsonrpc: HM_RPC,
-              ...data,
-            }
-        : data
-
       return messageBuilder
-        .request(data, {
-          timeout: this.requestTimeout,
-          ...opts,
-        })
-        .then((payload) => {
-          if (!isPlainObject(payload) || payload.jsonrpc !== HM_RPC) {
-            return payload
-          }
-
-          // hmrpc
-          const { error, result } = payload
+        .request(
+          {
+            jsonrpc: 'hmrpcv1',
+            ...data,
+          },
+          {
+            timeout: this.requestTimeout,
+          },
+        )
+        .then(({ error, result }) => {
           if (error) {
             throw error
           }

@@ -2,8 +2,8 @@ import { Logger } from './logger'
 import { EventBus } from './event'
 import { Deferred, timeout } from './defer'
 import { nativeBle } from './ble'
-import { json2buf, buf2json, bin2hex, buf2str, str2buf } from './data'
-import { isZeppOS, isPlainObject } from '../core/common/common'
+import { json2buf, buf2json, bin2hex, buf2str } from './data'
+import { isZeppOS } from '../core/common/common'
 import { setTimeout, clearTimeout } from './setTimeout'
 
 const logger = isZeppOS()
@@ -71,7 +71,7 @@ export function getDataType(type) {
     case DataType.empty:
       return MessagePayloadDataTypeOp.EMPTY
     default:
-      return MessagePayloadDataTypeOp.BIN
+      return MessagePayloadDataTypeOp.TEXT
   }
 }
 
@@ -267,6 +267,7 @@ export class MessageBuilder extends EventBus {
     super()
     this.isDevice = isZeppOS()
     this.isSide = !this.isDevice
+
     this.appId = appId
     this.appDevicePort = appDevicePort
     this.appSidePort = appSidePort
@@ -680,25 +681,6 @@ export class MessageBuilder extends EventBus {
     })
   }
 
-  sendText({
-    requestId = 0,
-    text,
-    type = MessagePayloadType.Request,
-    contentType,
-    dataType,
-  }) {
-    const packageBin = str2buf(text)
-    const traceId = requestId ? requestId : genTraceId()
-
-    return this.sendHmProtocol({
-      requestId: traceId,
-      dataBin: packageBin,
-      type,
-      contentType,
-      dataType,
-    })
-  }
-
   sendDataWithSession(
     {
       traceId,
@@ -1010,17 +992,11 @@ export class MessageBuilder extends EventBus {
           if (fullPayload.payloadType === MessagePayloadType.Request) {
             this.emit('request', {
               request: fullPayload,
-              response: ({ data, dataType }) => {
-                if (typeof dataType !== 'undefined') {
-                  dataType = getDataType(dataType)
-                } else {
-                  dataType = fullPayload.dataType
-                }
-
+              response: ({ data }) => {
                 this.response({
                   requestId: fullPayload.traceId,
                   contentType: fullPayload.contentType,
-                  dataType,
+                  dataType: fullPayload.dataType,
                   data,
                 })
               },
@@ -1062,24 +1038,10 @@ export class MessageBuilder extends EventBus {
       this.errorIfBleDisconnect()
       this.errorIfSideServiceDisconnect()
 
-      let contentType = DataType.bin
-
-      if (typeof data === 'string') {
-        contentType = DataType.text
-      } else if (isPlainObject(data)) {
-        contentType = DataType.json
-      } else if (
-        data instanceof ArrayBuffer ||
-        ArrayBuffer.isView(data) ||
-        Buffer.isBuffer(data)
-      ) {
-        contentType = DataType.bin
-      }
-
       const defaultOpts = {
         timeout: 60000,
-        contentType,
-        dataType: contentType,
+        contentType: 'json',
+        dataType: 'json',
       }
       const requestId = genTraceId()
       const requestPromiseTask = Deferred()
@@ -1107,7 +1069,7 @@ export class MessageBuilder extends EventBus {
           case MessagePayloadDataTypeOp.JSON:
             result = buf2json(payload)
             break
-          default: // buf
+          default: // text
             result = payload
             break
         }
@@ -1136,32 +1098,12 @@ export class MessageBuilder extends EventBus {
           contentType: MessagePayloadDataTypeOp.BIN,
           dataType: getDataType(opts.dataType),
         })
-      } else if (
-        getDataType(opts.contentType) === MessagePayloadDataTypeOp.JSON
-      ) {
+      } else {
         this.sendJson({
           requestId,
           json: data,
           type: MessagePayloadType.Request,
           contentType: MessagePayloadDataTypeOp.JSON,
-          dataType: getDataType(opts.dataType),
-        })
-      } else if (
-        getDataType(opts.contentType) === MessagePayloadDataTypeOp.TEXT
-      ) {
-        this.sendText({
-          requestId,
-          text: data,
-          type: MessagePayloadType.Request,
-          contentType: MessagePayloadDataTypeOp.TEXT,
-          dataType: getDataType(opts.dataType),
-        })
-      } else {
-        this.sendBuf({
-          requestId,
-          buf: Buffer.from(data),
-          type: MessagePayloadType.Request,
-          contentType: MessagePayloadDataTypeOp.BIN,
           dataType: getDataType(opts.dataType),
         })
       }
@@ -1217,29 +1159,13 @@ export class MessageBuilder extends EventBus {
         contentType,
         dataType,
       })
-    } else if (MessagePayloadDataTypeOp.TEXT === dataType) {
-      this.sendText({
-        requestId,
-        text: data,
-        type: MessagePayloadType.Response,
-        contentType,
-        dataType,
-      })
-    } else if (MessagePayloadDataTypeOp.JSON === dataType) {
+    } else {
       this.sendJson({
         requestId,
         json: data,
         type: MessagePayloadType.Response,
         contentType,
         dataType,
-      })
-    } else {
-      this.sendBuf({
-        requestId,
-        buf: data,
-        type: MessagePayloadType.Response,
-        contentType,
-        dataType: MessagePayloadDataTypeOp.BIN,
       })
     }
   }
@@ -1250,20 +1176,6 @@ export class MessageBuilder extends EventBus {
    * @returns
    */
   call(data) {
-    let contentType = MessagePayloadDataTypeOp.JSON
-
-    if (typeof data === 'string') {
-      contentType = MessagePayloadDataTypeOp.TEXT
-    } else if (isPlainObject(data)) {
-      contentType = MessagePayloadDataTypeOp.JSON
-    } else if (
-      data instanceof ArrayBuffer ||
-      ArrayBuffer.isView(data) ||
-      Buffer.isBuffer(data)
-    ) {
-      contentType = MessagePayloadDataTypeOp.BIN
-    }
-
     return this.waitingShakePromise.then(() => {
       if (Buffer.isBuffer(data)) {
         return this.sendBuf({
@@ -1279,25 +1191,11 @@ export class MessageBuilder extends EventBus {
           contentType: MessagePayloadDataTypeOp.BIN,
           dataType: MessagePayloadDataTypeOp.EMPTY,
         })
-      } else if (contentType === MessagePayloadDataTypeOp.JSON) {
+      } else {
         return this.sendJson({
           json: data,
           type: MessagePayloadType.Notify,
           contentType: MessagePayloadDataTypeOp.JSON,
-          dataType: MessagePayloadDataTypeOp.EMPTY,
-        })
-      } else if (contentType === MessagePayloadDataTypeOp.TEXT) {
-        return this.sendText({
-          text: data,
-          type: MessagePayloadType.Notify,
-          contentType: MessagePayloadDataTypeOp.TEXT,
-          dataType: MessagePayloadDataTypeOp.EMPTY,
-        })
-      } else {
-        return this.sendBuf({
-          buf: Buffer.from(data),
-          type: MessagePayloadType.Notify,
-          contentType: MessagePayloadDataTypeOp.BIN,
           dataType: MessagePayloadDataTypeOp.EMPTY,
         })
       }

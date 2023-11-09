@@ -106,7 +106,6 @@ export class Path {
 
     fetch(limit = Infinity) {
         const st = this.stat();
-console.log(st);
         if (!st) return null;
 
         const length = Math.min(limit, st.size);
@@ -171,12 +170,12 @@ console.log(st);
     }
 
     read(buffer, offset, length) {
-        console.log("read");
+        console.log("read " + this.path);
         hmFS.readSync({fd: this._f, buffer: buffer, options: {offset: offset, length: length}})
     }
 
     write(buffer, offset, length) {
-        console.log("write");
+        console.log("write" + this.path);
         hmFS.writeSync({fd: this._f, buffer: buffer, options: {offset: offset, length: length}})
     }
 
