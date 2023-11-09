@@ -32,12 +32,3 @@ export const getDataTypeConfig = (id_type, i_start, i_end) => {
     };
 };
 
-export function getApiLevel() {
-    if  (typeof API_LEVEL === 'undefined'){
-        return 1;
-    }
-    return API_LEVEL;
-}
-
-export const API_LEVEL_COMPAT = getApiLevel();
-

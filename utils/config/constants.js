@@ -6,6 +6,7 @@ export const DATA_UPDATE_INTERVAL_MS = MINUTE_IN_MS * 10;
 export const DATA_STALE_TIME_MS = MINUTE_IN_MS * 2;
 
 export const SERVER_URL = "http://localhost:29863/";
+//export const SERVER_URL = "https://dev.thatguys-service.com/xdrip/test/";
 export const SERVER_INFO_URL = "info.json";
 export const SERVER_PUT_TREATMENTS_URL = "add_treatments";
 export const SERVER_IMAGE_URL = "image.png";

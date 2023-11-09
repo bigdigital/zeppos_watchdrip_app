@@ -1,14 +1,15 @@
-
+import * as hmUI from "@zos/ui";
 import { zeroPad } from "./date";
 import {DEBUG_TEXT} from "../utils/config/styles";
-
+import { log } from "@zos/utils";
+import { Time } from "@zos/sensor";
 
 //this helper allows to display logs on the screen
 //Also you can use bridge mode to show logs from the app (need to enable logs inside zepp app development menu)
 
 export class DebugText {
     constructor() {
-        this.t = hmSensor.createSensor(hmSensor.id.TIME);
+        this.t = new Time();
         this.debugTextText = "";
         this.widget = hmUI.createWidget(hmUI.widget.TEXT, DEBUG_TEXT);
         this.lines = 0;
@@ -16,10 +17,7 @@ export class DebugText {
         this.enabled = false;
 
         var loggerName = "watchdrip_app";
-        if (hmSetting.getScreenType() === hmSetting.screen_type.AOD){
-            loggerName = loggerName + "-aod";
-        }
-        this.logger = Logger.getLogger(loggerName);
+        this.logger = log.getLogger(loggerName);
     }
 
     setLines(lines) {
@@ -54,13 +52,13 @@ export class DebugText {
 
     getTime() {
         return (
-            zeroPad(this.t.hour) +
+            zeroPad(this.t.getHours()) +
             ":" +
-            zeroPad(this.t.minute) +
+            zeroPad(this.t.getMinutes()) +
             ":" +
-            zeroPad(this.t.second) +
+            zeroPad(this.t.getSeconds()) +
             "." +
-            zeroPad(this.t.utc % 1000, 4)
+            zeroPad(this.t.getTime() % 1000, 4)
         );
     }
 

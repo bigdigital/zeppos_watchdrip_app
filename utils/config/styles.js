@@ -1,4 +1,6 @@
 import { gettext as getText } from "i18n";
+import * as hmUI from "@zos/ui";
+
 import {DEVICE_HEIGHT, DEVICE_WIDTH, DEVICE_SHAPE} from "./device";
 
 import {Colors} from "./constants";
