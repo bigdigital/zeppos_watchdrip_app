@@ -9,7 +9,6 @@
 import { back,launchApp,push } from '@zos/router'
 
 export const GoBackType = {NONE: 'none', GO_BACK: 'go_back'};
-export const FETCH_SERVICE_ACTION = {START_SERVICE: 'start', UPDATE: 'update', STOP_SERVICE: 'stop'};
 
 export function gotoSubpage(page, params, appid) {
     if (!params) params = {};

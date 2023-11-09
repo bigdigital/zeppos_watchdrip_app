@@ -4,6 +4,8 @@
 
 export const SERVICE_NAME = "app-service/fetch_service";
 
+export const WATCHDRIP_APP_ID = "28962";
+
 export const WATCHDRIP_SETTINGS_DEFAULTS = {
     disableUpdates: false,
     showLog: false,

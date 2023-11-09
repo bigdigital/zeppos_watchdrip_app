@@ -12,7 +12,14 @@
     "description": "Watchdrip application, required for wathcfaces",
     "icon": "icon.png"
   },
-  "permissions": ["data:os.device.info", "device:os.alarm", "device:os.ble", "device:os.bg_service", "device:os.local_storage"],
+  "permissions": [
+    "data:os.device.info",
+    "device:os.alarm",
+    "device:os.notification",
+    "device:os.ble",
+    "device:os.local_storage",
+    "device:os.bg_service"
+  ],
   "runtime": {
     "apiVersion": {
       "compatible": "3.0.0",

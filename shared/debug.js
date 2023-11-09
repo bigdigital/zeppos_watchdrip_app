@@ -16,7 +16,7 @@ export class DebugText {
         // this.enabled = true;
         this.enabled = false;
 
-        var loggerName = "watchdrip_app";
+        let loggerName = "watchdrip_app";
         this.logger = log.getLogger(loggerName);
     }
 
