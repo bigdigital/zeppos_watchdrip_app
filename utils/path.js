@@ -141,7 +141,6 @@ export class Path {
     }
 
     overrideWithText(text) {
-        //console.log(text);
         return this.override(FsTools.strToUtf8(text));
     }
 

@@ -5,14 +5,14 @@ import * as style from "../utils/config/styles";
 import {Path} from "../utils/path";
 import {log} from "@zos/utils";
 import * as appService from "@zos/app-service";
-import {getPackageInfo, queryPermission, requestPermission} from "@zos/app";
+import {emitCustomSystemEvent, getPackageInfo, queryPermission, requestPermission} from "@zos/app";
 
 import {Time} from "@zos/sensor";
 import * as hmUI from "@zos/ui";
 import {GoBackType} from "../shared/navigate";
-import {WatchdripConfig} from "../utils/watchdrip/config";
-import {FETCH_SERVICE_ACTION, QUERY_PERMISSION_STATUS} from "../utils/config/constants";
-import {BasePage} from "@zeppos/zml/base-page";
+import {FETCH_SERVICE_ACTION} from "../utils/config/constants";
+import {LOCAL_STORAGE, LocalInfoStorage} from "../utils/watchdrip/localInfoStorage";
+import * as alarmMgr from '@zos/alarm'
 
 const logger = log.getLogger("watchdrip_app");
 
@@ -31,6 +31,8 @@ const PagesType = {
     ADD_TREATMENT: 'add_treatment'
 };
 
+let {messaging, localStorage} = getApp()._options.globalData;
+
 
 class Watchdrip {
     constructor() {
@@ -38,7 +40,8 @@ class Watchdrip {
         this.widgets = {};
         this.timeSensor = new Time();
         this.serviceRunning = false;
-        this.conf = new WatchdripConfig();
+        this.storage = new LocalInfoStorage(localStorage);
+        debug.log(this.storage);
     }
 
     start(data) {
@@ -54,7 +57,7 @@ class Watchdrip {
                 break;
             case PagesType.CONFIG:
                 pageTitle = getText("settings");
-                //this.config_page();
+                this.config_page();
                 break;
             case PagesType.ADD_TREATMENT:
                 pageTitle = getText("add_treatment");
@@ -75,7 +78,14 @@ class Watchdrip {
         this.initFetchService();
 
         let pkg = getPackageInfo();
-        this.widgets.versionText = hmUI.createWidget(hmUI.widget.TEXT, {...style.VERSION_TEXT, text: "v" + pkg.version});
+        this.widgets.versionText = hmUI.createWidget(hmUI.widget.TEXT, {
+            ...style.VERSION_TEXT,
+            text: "v" + pkg.version
+        });
+    }
+
+    config_page() {
+
     }
 
     add_treatment_page() {
@@ -85,28 +95,30 @@ class Watchdrip {
     initFetchService() {
         let services = appService.getAllAppServices();
         this.serviceRunning = services.includes(SERVICE_NAME);
-        logger.log("service status %s", this.serviceRunning);
-
-        if (!this.serviceRunning) this.permissionRequest();
+        debug.log("service status " + this.serviceRunning);
+        if (this.storage.settings.useBGService) {
+            if (!this.serviceRunning) this.permissionRequest();
+        } else {
+            this.emitEvent(FETCH_SERVICE_ACTION.START_SERVICE)
+        }
     }
 
     permissionRequest() {
         // Start time report service
+        debug.log('permissionRequest');
         const permissions = ["device:os.bg_service"];
 
+        const [result] = queryPermission({permissions: permissions});
 
-        const [result] = queryPermission({permissions:permissions});
-        debug.log('callback perm1');
-        debug.log(result);
         if (result === 0) {
             debug.log('requestPermission');
             requestPermission({
                 permissions: permissions,
-                function: (result) =>{
-                    debug.log('callback perm2');
-                    debug.log(result);
+                function: (result) => {
                     if (result === 2) {
                         this.startFetchService();
+                    } else {
+                        hmUI.showToast({text: `Service could not be started, activate manually`});
                     }
                 },
             });
@@ -116,14 +128,14 @@ class Watchdrip {
     }
 
     startFetchService() {
-        logger.log(`=== start service: ${SERVICE_NAME} ===`);
+        debug.log(`=== start service: ${SERVICE_NAME} ===`);
         const result = appService.start({
             url: SERVICE_NAME,
             param: JSON.stringify({
                 action: FETCH_SERVICE_ACTION.START_SERVICE
             }),
             complete_func: (info) => {
-                logger.log(`startService result: ` + JSON.stringify(info));
+                debug.log(`startService result: ` + JSON.stringify(info));
                 if (info.result) {
                     this.serviceRunning = true;
                     hmUI.showToast({text: `Service started`});
@@ -132,7 +144,7 @@ class Watchdrip {
         });
 
         if (result) {
-            logger.log("startService result: ", result);
+            debug.log("startService result: ", result);
         }
     }
 
@@ -144,12 +156,24 @@ class Watchdrip {
         }
     }
 
+    emitEvent(action) {
+        debug.log("emitEvent " + action);
+        let param = JSON.stringify({
+            action: action
+        });
+
+        emitCustomSystemEvent({
+            eventName: 'event:customize.fetch',
+            eventParam: param,
+        })
+    }
+
     onDestroy() {
-        this.conf.save();
+        this.storage.saveItem(LOCAL_STORAGE.SETTINGS);
     }
 }
 
-Page( {
+Page({
     onInit(p) {
         try {
             debug = new DebugText();

@@ -16,8 +16,8 @@ msgstr "Disable updates"
 msgid "showLog"
 msgstr "Show log"
 
-msgid "useAppFetch"
-msgstr "Use Alarms for fetch"
+msgid "useBGService"
+msgstr "Use Continuous BG service"
 
 msgid "data_upd_disabled"
 msgstr "Data updates disabled"

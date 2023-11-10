@@ -1,17 +1,13 @@
-
 import {LocalStorage} from "@zos/storage";
-//import {BaseApp} from "@zeppos/zml/base-app";
-//import {BaseApp} from "./core/device/base-app";
-App(
-    BaseApp(
-        {
+
+App({
         globalData: {
             localStorage: null
         },
         onCreate(options) {
             this.globalData.localStorage = new LocalStorage();
 
-           // this.globalData.messaging.disConnect();
+            // this.globalData.messaging.disConnect();
             console.log("app on create invoke");
         },
 
@@ -19,5 +15,4 @@ App(
             console.log("app on destroy invoke");
         }
     }
-    )
 );
