@@ -31,16 +31,18 @@ export class DebugText {
         }
     }
 
-    log(text) {
+    log(text, logger = true) {
         let formatted = DebugText.objToString(text);
-        this.logger.log(formatted);
+        if (logger) {
+            this.logger.log(formatted);
+        }
         if (!this.enabled) {
             this.debugTextText = "";
             return;
         }
         this.debugTextText +=
             this.getTime() + ":" + formatted + "\r\n";
-        var lines = this.debugTextText.split("\r\n");
+        let lines = this.debugTextText.split("\r\n");
         if (this.lines !== 0 && lines.length > this.lines) {
             // remove line, starting at the first position
             lines.splice(0, lines.length - 1 - this.lines);

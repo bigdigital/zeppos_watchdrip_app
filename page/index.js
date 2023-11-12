@@ -8,6 +8,8 @@ import * as appService from "@zos/app-service";
 import * as alarmMgr from "@zos/alarm";
 import {emitCustomSystemEvent, getPackageInfo, queryPermission, requestPermission} from "@zos/app";
 
+import * as dispMgr from '@zos/display'
+
 import * as nav from "../shared/navigate";
 import * as hmUI from "@zos/ui";
 import {
@@ -50,6 +52,7 @@ class Watchdrip {
         this.intervalTimer = null;
         this.updateIntervals = DATA_UPDATE_INTERVAL_MS;
         this.storage = new LocalInfoStorage(localStorage);
+        debug.setEnabled(this.storage.settings.s_showLog);
         debug.log(this.storage);
     }
 
@@ -58,7 +61,15 @@ class Watchdrip {
         debug.log(data);
         this.startData = data
         let pageTitle = '';
-        this.goBackType = nav.GoBackType.NONE;
+        //this.goBackType = nav.GoBackType.NONE;
+
+        dispMgr.setWakeUpRelaunch({
+            relaunch: true,
+        })
+        dispMgr.setPageBrightTime({
+            brightTime: 60000,
+        })
+
         switch (data.page) {
             case PagesType.MAIN:
                 let pkg = getPackageInfo();
@@ -110,19 +121,17 @@ class Watchdrip {
             },
         });
 
-        hmUI.createWidget(hmUI.widget.BUTTON, {
-            ...style.COMMON_BUTTON_ADD_TREATMENT,
-            click_func: (button_widget) => {
-                nav.gotoSubpage(PagesType.ADD_TREATMENT);
-            },
-        });
+        // hmUI.createWidget(hmUI.widget.BUTTON, {
+        //     ...style.COMMON_BUTTON_ADD_TREATMENT,
+        //     click_func: (button_widget) => {
+        //         nav.gotoSubpage(PagesType.ADD_TREATMENT);
+        //     },
+        // });
 
         if (this.storage.settings.s_disableUpdates) {
             this.showMessage(getText("data_upd_disabled"));
         } else {
-            if (this.readInfo()) {
-                this.updateWidgets();
-            }
+            this.showMessage(getText("connecting"));
             this.startDataUpdates();
         }
     }
@@ -230,38 +239,18 @@ class Watchdrip {
         //debug.log("checkUpdates");
         this.updateTimesWidget();
         let lastInfoUpdate = this.readLastUpdate();
-        if (!lastInfoUpdate) {
-            this.handleRareCases();
-        } else {
-            if (this.lastUpdateSucessful) {
-                if (this.lastInfoUpdate !== lastInfoUpdate) {
-                    //update widgets because the data was modified outside the current scope
-                    debug.log("update from remote");
-                    this.readInfo();
-                    this.lastInfoUpdate = lastInfoUpdate;
-                    this.updateWidgets();
-                    return;
-                }
-                if (this.isTimeout(lastInfoUpdate, this.updateIntervals)) {
-                    debug.log("reached updateIntervals");
-                    this.fetchInfo();
-                    return;
-                }
-                const bgTimeOlder = this.isTimeout(this.watchdripData.getBg().time, XDRIP_UPDATE_INTERVAL_MS);
-                const statusNowOlder = this.isTimeout(this.watchdripData.getStatus().now, XDRIP_UPDATE_INTERVAL_MS);
-                if (bgTimeOlder || statusNowOlder) {
-                    if (!this.isTimeout(this.lastUpdateAttempt, DATA_STALE_TIME_MS)) {
-                        debug.log("wait DATA_STALE_TIME");
-                        return;
-                    }
-                    debug.log("data older than sensor update interval");
-                    this.fetchInfo();
-                    return;
-                }
-                //data not modified from outside scope so nothing to do
-                debug.log("data not modified");
-            } else {
-                this.handleRareCases();
+
+        if (this.storage.info.lastError){
+            this.showMessage(getText(this.storage.info.lastError));
+        }
+        if (this.lastUpdateSucessful) {
+            if (this.lastInfoUpdate !== lastInfoUpdate) {
+                //update widgets because the data was modified
+                debug.log("update from remote");
+                this.readInfo();
+                this.lastInfoUpdate = lastInfoUpdate;
+                this.updateWidgets();
+                return;
             }
         }
     }
@@ -271,19 +260,6 @@ class Watchdrip {
         this.emitEvent(FETCH_SERVICE_ACTION.UPDATE);
     }
 
-    handleRareCases() {
-        let fetch = false;
-        if (this.lastUpdateAttempt == null) {
-            debug.log("initial fetch");
-            fetch = true;
-        } else if (this.isTimeout(this.lastUpdateAttempt, DATA_STALE_TIME_MS)) {
-            debug.log("the side app not responding, force update again");
-            fetch = true;
-        }
-        if (fetch) {
-            this.fetchInfo();
-        }
-    }
 
     isTimeout(time, timeout_ms) {
         if (!time) {
@@ -352,7 +328,7 @@ class Watchdrip {
 
     initFetchService() {
         this.serviceRunning = this.isServiceRunning();
-        debug.log("service status " + this.serviceRunning);
+        debug.log("service running " + this.serviceRunning);
         if (this.storage.settings.s_disableUpdates ){
             if (this.serviceRunning) {
                 this.emitEvent(FETCH_SERVICE_ACTION.STOP_SERVICE);
@@ -360,12 +336,14 @@ class Watchdrip {
             return;
         }
         if (this.storage.settings.s_useBGService) {
-            if (!this.serviceRunning) this.permissionRequest();
+            if (!this.serviceRunning) {
+                this.permissionRequest();
+            }
         } else {
             if (this.serviceRunning) {
                 this.emitEvent(FETCH_SERVICE_ACTION.STOP_SERVICE);
             }
-            if (!this.isAlarmRunning()) {
+            if (!this.getAlarmId()) {
                 this.emitEvent(FETCH_SERVICE_ACTION.START_SERVICE);
             }
         }
@@ -376,9 +354,12 @@ class Watchdrip {
         return services.includes(SERVICE_NAME);
     }
 
-    isAlarmRunning() {
+    getAlarmId() {
         let alarms = alarmMgr.getAllAlarms();
-        return alarms.length !== 0;
+        if (alarms.length) {
+            return alarms[0];
+        }
+        return 0;
     }
 
     permissionRequest() {
@@ -392,7 +373,7 @@ class Watchdrip {
             debug.log('requestPermission');
             requestPermission({
                 permissions: permissions,
-                callback([result]) {
+                callback:(result) =>{
                     debug.log('callback ret: ' + result);
                     if (result === 2) {
                         this.startFetchService();
@@ -458,7 +439,7 @@ class Watchdrip {
                 break;
         }
         this.stopDataUpdates();
-
+        dispMgr.resetPageBrightTime();
     }
 }
 

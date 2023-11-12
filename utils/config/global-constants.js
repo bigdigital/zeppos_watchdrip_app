@@ -9,3 +9,6 @@ export const WATCHDRIP_SETTINGS_DEFAULTS = {
     s_useBGService: false,
     s_graphInfo: true,
 };
+
+
+export const GRAPH_FETCH_PARAM = 'graph=1';
