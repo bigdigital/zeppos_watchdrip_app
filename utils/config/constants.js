@@ -44,7 +44,8 @@ export const GRAPH_LIMIT = 18;
 export const FETCH_SERVICE_ACTION = {
     START_SERVICE: 'start',
     UPDATE: 'update',
-    STOP_SERVICE: 'stop'
+    STOP_SERVICE: 'stop',
+    WRONG_ACTION: 'wrong'
 };
 
 export const QUERY_PERMISSION_STATUS = {

@@ -10,15 +10,6 @@ msgstr "Settings"
 msgid "add_treatment"
 msgstr "Add treatment"
 
-msgid "disableUpdates"
-msgstr "Disable updates"
-
-msgid "showLog"
-msgstr "Show log"
-
-msgid "useBGService"
-msgstr "Use Continuous BG service"
-
 msgid "data_upd_disabled"
 msgstr "Data updates disabled"
 
@@ -33,3 +24,15 @@ msgstr "Please \"make\" sure\nthe bluetooth is enabled\non your phone"
 
 msgid "status_start_watchdrip"
 msgstr "Launch \"Watchdrip+\" app\non your phone and activate\n\"web server\" option"
+
+msgid "s_disableUpdates"
+msgstr "Disable Updates"
+
+msgid "s_showLog"
+msgstr "Show Log"
+
+msgid "s_useBGService"
+msgstr "Continuous BG Service"
+
+msgid "s_graphInfo"
+msgstr "Include graph"

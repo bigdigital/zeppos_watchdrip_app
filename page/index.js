@@ -1,18 +1,27 @@
 import {DebugText} from "../shared/debug";
-import {gettext as getText} from "i18n";
-import {SERVICE_NAME, WF_DIR} from "../utils/config/global-constants";
+import {getText} from '@zos/i18n'
+import {SERVICE_NAME, WF_DIR, WF_INFO_FILE} from "../utils/config/global-constants";
 import * as style from "../utils/config/styles";
 import {Path} from "../utils/path";
 import {log} from "@zos/utils";
 import * as appService from "@zos/app-service";
+import * as alarmMgr from "@zos/alarm";
 import {emitCustomSystemEvent, getPackageInfo, queryPermission, requestPermission} from "@zos/app";
 
-import {Time} from "@zos/sensor";
+import * as nav from "../shared/navigate";
 import * as hmUI from "@zos/ui";
-import {GoBackType} from "../shared/navigate";
-import {FETCH_SERVICE_ACTION} from "../utils/config/constants";
+import {
+    Colors,
+    DATA_STALE_TIME_MS,
+    DATA_TIMER_UPDATE_INTERVAL_MS, DATA_UPDATE_INTERVAL_MS,
+    FETCH_SERVICE_ACTION,
+    XDRIP_UPDATE_INTERVAL_MS
+} from "../utils/config/constants";
 import {LOCAL_STORAGE, LocalInfoStorage} from "../utils/watchdrip/localInfoStorage";
-import * as alarmMgr from '@zos/alarm'
+import {WatchdripData} from "../utils/watchdrip/watchdrip-data";
+
+import { setScrollLock } from '@zos/page'
+import {getDataTypeConfig, getTimestamp, img} from "../utils/helper";
 
 const logger = log.getLogger("watchdrip_app");
 
@@ -31,15 +40,15 @@ const PagesType = {
     ADD_TREATMENT: 'add_treatment'
 };
 
-let {messaging, localStorage} = getApp()._options.globalData;
-
+let {localStorage} = getApp()._options.globalData;
 
 class Watchdrip {
     constructor() {
         this.createWatchdripDir();
         this.widgets = {};
-        this.timeSensor = new Time();
         this.serviceRunning = false;
+        this.intervalTimer = null;
+        this.updateIntervals = DATA_UPDATE_INTERVAL_MS;
         this.storage = new LocalInfoStorage(localStorage);
         debug.log(this.storage);
     }
@@ -47,8 +56,9 @@ class Watchdrip {
     start(data) {
         debug.log("start");
         debug.log(data);
+        this.startData = data
         let pageTitle = '';
-        this.goBackType = GoBackType.NONE;
+        this.goBackType = nav.GoBackType.NONE;
         switch (data.page) {
             case PagesType.MAIN:
                 let pkg = getPackageInfo();
@@ -66,7 +76,7 @@ class Watchdrip {
         }
 
         if (pageTitle) {
-            if (DEVICE_TYPE === "round") {
+            if (style.DEVICE_TYPE === "round") {
                 this.widgets.titleText = hmUI.createWidget(hmUI.widget.TEXT, {...style.TITLE_TEXT, text: pageTitle})
             } else {
                 hmUI.updateStatusBarTitle(pageTitle);
@@ -76,16 +86,264 @@ class Watchdrip {
 
     main_page() {
         this.initFetchService();
-
+        this.infoFile = new Path("full", WF_INFO_FILE);
+        this.watchdripData = new WatchdripData();
         let pkg = getPackageInfo();
         this.widgets.versionText = hmUI.createWidget(hmUI.widget.TEXT, {
             ...style.VERSION_TEXT,
             text: "v" + pkg.version
         });
+
+
+        this.widgets.messageTextWidget = hmUI.createWidget(hmUI.widget.TEXT, {...style.MESSAGE_TEXT, text: ""});
+        this.widgets.bgValTextWidget = hmUI.createWidget(hmUI.widget.TEXT, style.BG_VALUE_TEXT);
+        this.widgets.bgValTimeTextWidget = hmUI.createWidget(hmUI.widget.TEXT, style.BG_TIME_TEXT);
+        this.widgets.bgDeltaTextWidget = hmUI.createWidget(hmUI.widget.TEXT, style.BG_DELTA_TEXT);
+        this.widgets.bgTrendImageWidget = hmUI.createWidget(hmUI.widget.IMG, style.BG_TREND_IMAGE);
+        this.widgets.bgStaleLine = hmUI.createWidget(hmUI.widget.FILL_RECT, style.BG_STALE_RECT);
+        this.widgets.bgStaleLine.setProperty(hmUI.prop.VISIBLE, false);
+
+        hmUI.createWidget(hmUI.widget.BUTTON, {
+            ...style.COMMON_BUTTON_SETTINGS,
+            click_func: (button_widget) => {
+                nav.gotoSubpage(PagesType.CONFIG);
+            },
+        });
+
+        hmUI.createWidget(hmUI.widget.BUTTON, {
+            ...style.COMMON_BUTTON_ADD_TREATMENT,
+            click_func: (button_widget) => {
+                nav.gotoSubpage(PagesType.ADD_TREATMENT);
+            },
+        });
+
+        if (this.storage.settings.s_disableUpdates) {
+            this.showMessage(getText("data_upd_disabled"));
+        } else {
+            if (this.readInfo()) {
+                this.updateWidgets();
+            }
+            this.startDataUpdates();
+        }
     }
 
     config_page() {
+         setScrollLock({
+             lock: true,
+         })
+        this.configScrollList = hmUI.createWidget(hmUI.widget.SCROLL_LIST,
+            {
+                ...style.CONFIG_PAGE_SCROLL,
+                item_click_func: (list, index) => {
+                    debug.log(index);
+                    const key = this.configDataList[index].key
+                    let val = this.storage.settings[key]
+                    this.storage.settings[key] = !val;
+                    //update list
+                    this.configScrollList.setProperty(hmUI.prop.UPDATE_DATA, {
+                        ...this.getConfigData(),
+                        //Refresh the data and stay on the current page. If it is not set or set to 0, it will return to the top of the list.
+                        on_page: 1
+                    })
+                },
+                ...this.getConfigData()
+            });
 
+    }
+
+    readInfo() {
+        let data = this.infoFile.fetchJSON();
+        if (data) {
+            debug.log("data was read");
+            this.watchdripData.setData(data);
+            this.watchdripData.timeDiff = 0;
+            data = null;
+            return true
+        }
+        return false;
+    }
+
+    updateWidgets() {
+        debug.log('updateWidgets');
+        this.setMessageVisibility(false);
+        this.setBgElementsVisibility(true);
+        this.updateValuesWidget()
+        this.updateTimesWidget()
+    }
+    updateValuesWidget() {
+        let bgValColor = Colors.white;
+        let bgObj = this.watchdripData.getBg();
+        if (bgObj.isHigh) {
+            bgValColor = Colors.bgHigh;
+        } else if (bgObj.isLow) {
+            bgValColor = Colors.bgLow;
+        }
+
+        this.widgets.bgValTextWidget.setProperty(hmUI.prop.MORE, {
+            text: bgObj.getBGVal(),
+            color: bgValColor,
+        });
+
+        this.widgets.bgDeltaTextWidget.setProperty(hmUI.prop.MORE, {
+            text: bgObj.delta + " " + this.watchdripData.getStatus().getUnitText()
+        });
+
+        //debug.log(bgObj.getArrowResource());
+        this.widgets.bgTrendImageWidget.setProperty(hmUI.prop.SRC, bgObj.getArrowResource());
+        this.widgets.bgStaleLine.setProperty(hmUI.prop.VISIBLE, this.watchdripData.isBgStale());
+    }
+
+    updateTimesWidget() {
+        let bgObj = this.watchdripData.getBg();
+        this.widgets.bgValTimeTextWidget.setProperty(hmUI.prop.MORE, {
+            text: this.watchdripData.getTimeAgo(bgObj.time),
+        });
+    }
+
+     startDataUpdates() {
+         if (this.intervalTimer != null) return; //already started
+         debug.log("startDataUpdates");
+         this.intervalTimer = setInterval(() => {
+             this.checkUpdates();
+         }, DATA_TIMER_UPDATE_INTERVAL_MS);
+     }
+
+
+    stopDataUpdates() {
+        if (this.intervalTimer !== null) {
+            //debug.log("stopDataUpdates");
+            clearInterval(this.intervalTimer);
+            this.intervalTimer = null;
+        }
+    }
+
+    readLastUpdate() {
+        debug.log("readLastUpdate");
+        this.storage.readItem(LOCAL_STORAGE.INFO);
+        this.lastUpdateAttempt = this.storage.info.lastUpdAttempt;
+        this.lastUpdateSucessful = this.storage.info.lastUpdSuccess;
+
+        return this.storage.info.lastUpd;
+    }
+
+    checkUpdates() {
+        //debug.log("checkUpdates");
+        this.updateTimesWidget();
+        let lastInfoUpdate = this.readLastUpdate();
+        if (!lastInfoUpdate) {
+            this.handleRareCases();
+        } else {
+            if (this.lastUpdateSucessful) {
+                if (this.lastInfoUpdate !== lastInfoUpdate) {
+                    //update widgets because the data was modified outside the current scope
+                    debug.log("update from remote");
+                    this.readInfo();
+                    this.lastInfoUpdate = lastInfoUpdate;
+                    this.updateWidgets();
+                    return;
+                }
+                if (this.isTimeout(lastInfoUpdate, this.updateIntervals)) {
+                    debug.log("reached updateIntervals");
+                    this.fetchInfo();
+                    return;
+                }
+                const bgTimeOlder = this.isTimeout(this.watchdripData.getBg().time, XDRIP_UPDATE_INTERVAL_MS);
+                const statusNowOlder = this.isTimeout(this.watchdripData.getStatus().now, XDRIP_UPDATE_INTERVAL_MS);
+                if (bgTimeOlder || statusNowOlder) {
+                    if (!this.isTimeout(this.lastUpdateAttempt, DATA_STALE_TIME_MS)) {
+                        debug.log("wait DATA_STALE_TIME");
+                        return;
+                    }
+                    debug.log("data older than sensor update interval");
+                    this.fetchInfo();
+                    return;
+                }
+                //data not modified from outside scope so nothing to do
+                debug.log("data not modified");
+            } else {
+                this.handleRareCases();
+            }
+        }
+    }
+
+    fetchInfo(params = '') {
+        debug.log("fetchInfo");
+        this.emitEvent(FETCH_SERVICE_ACTION.UPDATE);
+    }
+
+    handleRareCases() {
+        let fetch = false;
+        if (this.lastUpdateAttempt == null) {
+            debug.log("initial fetch");
+            fetch = true;
+        } else if (this.isTimeout(this.lastUpdateAttempt, DATA_STALE_TIME_MS)) {
+            debug.log("the side app not responding, force update again");
+            fetch = true;
+        }
+        if (fetch) {
+            this.fetchInfo();
+        }
+    }
+
+    isTimeout(time, timeout_ms) {
+        if (!time) {
+            return false;
+        }
+        return getTimestamp() - time > timeout_ms;
+    }
+
+    showMessage(text) {
+        this.setBgElementsVisibility(false);
+        //use for autowrap
+        //
+        // let lay = hmUI.getTextLayout(text, {
+        //     text_size: MESSAGE_TEXT_SIZE,
+        //     text_width: MESSAGE_TEXT_WIDTH,
+        //     wrapped: 1
+        // });
+        // debug.log(lay);
+        this.widgets.messageTextWidget.setProperty(hmUI.prop.MORE, {text: text});
+        this.setMessageVisibility(true);
+    }
+
+    setBgElementsVisibility(visibility) {
+        this.widgets.bgValTextWidget.setProperty(hmUI.prop.VISIBLE, visibility);
+        this.widgets.bgValTimeTextWidget.setProperty(hmUI.prop.VISIBLE, visibility);
+        this.widgets.bgTrendImageWidget.setProperty(hmUI.prop.VISIBLE, visibility);
+        this.widgets.bgStaleLine.setProperty(hmUI.prop.VISIBLE, visibility);
+        this.widgets.bgDeltaTextWidget.setProperty(hmUI.prop.VISIBLE, visibility);
+    }
+
+    setMessageVisibility(visibility) {
+        this.widgets.messageTextWidget.setProperty(hmUI.prop.VISIBLE, visibility);
+    }
+
+    getConfigData() {
+        let dataList = [];
+
+        Object.entries(this.storage.settings).forEach(entry => {
+            const [key, value] = entry;
+            let stateImg = style.RADIO_OFF
+            if (value) {
+                stateImg = style.RADIO_ON
+            }
+            dataList.push({
+                key: key,
+                name: getText(key),
+                state_src: img('icons/' + stateImg)
+            });
+        });
+        this.configDataList = dataList;
+
+        let dataTypeConfig = [
+            getDataTypeConfig(1, 0, dataList.length)
+        ]
+        return {
+            data_array: dataList,
+            data_count: dataList.length,
+            data_type_config: dataTypeConfig,
+            data_type_config_count: dataTypeConfig.length
+        }
     }
 
     add_treatment_page() {
@@ -93,14 +351,34 @@ class Watchdrip {
     }
 
     initFetchService() {
-        let services = appService.getAllAppServices();
-        this.serviceRunning = services.includes(SERVICE_NAME);
+        this.serviceRunning = this.isServiceRunning();
         debug.log("service status " + this.serviceRunning);
-        if (this.storage.settings.useBGService) {
+        if (this.storage.settings.s_disableUpdates ){
+            if (this.serviceRunning) {
+                this.emitEvent(FETCH_SERVICE_ACTION.STOP_SERVICE);
+            }
+            return;
+        }
+        if (this.storage.settings.s_useBGService) {
             if (!this.serviceRunning) this.permissionRequest();
         } else {
-            this.emitEvent(FETCH_SERVICE_ACTION.START_SERVICE)
+            if (this.serviceRunning) {
+                this.emitEvent(FETCH_SERVICE_ACTION.STOP_SERVICE);
+            }
+            if (!this.isAlarmRunning()) {
+                this.emitEvent(FETCH_SERVICE_ACTION.START_SERVICE);
+            }
         }
+    }
+
+    isServiceRunning(){
+        let services = appService.getAllAppServices();
+        return services.includes(SERVICE_NAME);
+    }
+
+    isAlarmRunning() {
+        let alarms = alarmMgr.getAllAlarms();
+        return alarms.length !== 0;
     }
 
     permissionRequest() {
@@ -108,13 +386,14 @@ class Watchdrip {
         debug.log('permissionRequest');
         const permissions = ["device:os.bg_service"];
 
-        const [result] = queryPermission({permissions: permissions});
+        let [result] = queryPermission({permissions: permissions});
 
         if (result === 0) {
             debug.log('requestPermission');
             requestPermission({
                 permissions: permissions,
-                function: (result) => {
+                callback([result]) {
+                    debug.log('callback ret: ' + result);
                     if (result === 2) {
                         this.startFetchService();
                     } else {
@@ -156,20 +435,30 @@ class Watchdrip {
         }
     }
 
-    emitEvent(action) {
-        debug.log("emitEvent " + action);
-        let param = JSON.stringify({
-            action: action
-        });
-
-        emitCustomSystemEvent({
+    emitEvent(action, params = {}) {
+        let obj = {
             eventName: 'event:customize.fetch',
-            eventParam: param,
-        })
+            eventParam: JSON.stringify({
+                action, ...params
+            })
+        }
+        debug.log(`emitEvent ${obj.eventParam} `);
+        emitCustomSystemEvent(obj)
     }
 
     onDestroy() {
-        this.storage.saveItem(LOCAL_STORAGE.SETTINGS);
+        switch (this.startData.page) {
+            case PagesType.MAIN:
+
+                break;
+            case PagesType.CONFIG:
+                this.storage.saveItem(LOCAL_STORAGE.SETTINGS);
+                break;
+            case PagesType.ADD_TREATMENT:
+                break;
+        }
+        this.stopDataUpdates();
+
     }
 }
 

@@ -32,3 +32,6 @@ export const getDataTypeConfig = (id_type, i_start, i_end) => {
     };
 };
 
+export function getTimestamp(t = Date.now()) {
+    return t % 10000000
+}

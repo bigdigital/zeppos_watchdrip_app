@@ -1,5 +1,6 @@
 import {TEST_DATA} from "../../config/constants";
 import {MINUTE_IN_MS} from "../../../shared/date";
+import {getTimestamp} from "../../helper";
 
 export class BgData {
     constructor(val, delta, trend, isHigh, isLow, time, isStale) {
@@ -25,7 +26,7 @@ export class BgData {
 
     static createEmpty() {
         if (TEST_DATA){
-            return new BgData("10.5", "+13.2", "Flat", true, false, Date.now()-2*MINUTE_IN_MS, false);
+            return new BgData("10.5", "+13.2", "Flat", true, false, getTimestamp()-2*MINUTE_IN_MS, false);
         }
         return new BgData("", "", "", false, false, null, true);
     }

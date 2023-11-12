@@ -22,7 +22,7 @@ export function gotoSubpage(page, params, appid) {
 
     let obj = {
         url: url,
-        param: JSON.stringify({
+        params: JSON.stringify({
             page, ...params
         })
     }

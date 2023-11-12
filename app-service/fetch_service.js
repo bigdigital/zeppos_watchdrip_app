@@ -7,11 +7,11 @@ import {connectStatus} from '@zos/ble'
 import {LOCAL_STORAGE, LocalInfoStorage} from "../utils/watchdrip/localInfoStorage";
 import {createDeviceMessage} from "../core/device/device-message";
 import * as alarmMgr from '@zos/alarm'
-import {getPackageInfo} from "@zos/app";
 import {SERVICE_NAME, WF_INFO_FILE} from "../utils/config/global-constants";
 import {Path} from "../utils/path";
 import {zeroPad} from "../shared/date";
 import {str2json} from "../shared/data";
+import {getTimestamp} from "../utils/helper";
 
 const logger = log.getLogger("fetch-service");
 
@@ -24,14 +24,11 @@ let {messaging, localStorage} = getApp()._options.globalData;
 
 class WatchdripService {
     constructor() {
-        getPackageInfo().appId
-
         this.storage = new LocalInfoStorage(localStorage)
         this.timeSensor = new Time();
         this.connectionActive = false;
         this.infoFile = new Path("full", WF_INFO_FILE);
         this.updatingData = false;
-        this.dateTime = new Date();
     }
 
     initConnection() {
@@ -48,7 +45,7 @@ class WatchdripService {
     }
 
     dropConnection() {
-        if (!this.connectionActive) {
+        if (!this.connectionActive || !messaging) {
             return;
         }
         logger.log("dropConnection");
@@ -73,7 +70,7 @@ class WatchdripService {
 
     prepare() {
         logger.log("prepare");
-        if (this.storage.settings.useBGService) {
+        if (this.storage.settings.s_useBGService) {
             this.timeSensor.onPerMinute(() => {
                 logger.log("onPerMinute");
                 this.fetchInfo();
@@ -120,7 +117,7 @@ class WatchdripService {
     }
 
     fetchInfo() {
-        logger.log("fetchInfo "+ this.getTime());
+        logger.log("fetchInfo " + this.getTime());
         if (this.updatingData) {
             logger.log("updatingData, return");
             return;
@@ -169,17 +166,15 @@ class WatchdripService {
     }
 
     resetLastUpdate() {
-        logger.log("resetLastUpdate");
-        this.storage.info.lastUpdAttempt = this.dateTime.getTime();
+        //logger.log("resetLastUpdate");
+        this.storage.info.lastUpdAttempt = getTimestamp();
         this.storage.info.lastUpdSuccess = false;
     }
 
     saveInfo(info) {
         logger.log("saveInfo");
-
-        this.storage.info.lastUpd = this.dateTime.getTime();
-        let dataInfo = str2json(info);
-        dataInfo.status.fetch = this.storage.info.lastUpd;
+        this.storage.info.lastUpd = getTimestamp();
+        //let dataInfo = str2json(info);
         this.infoFile.overrideWithJSON(info);
         this.storage.info.lastUpdSuccess = true;
     }
@@ -188,23 +183,22 @@ class WatchdripService {
         logger.log(`stopService`);
         if (this.storage.info.alarmId) {
             logger.log(`remove alarm id ${this.storage.info.alarmId})`);
-            if (!alarmMgr.cancel(this.storage.info.alarmId)) {
-                logger.log(`service onEvent(${p})`);
-                this.storage.info.alarmId = 0;
-                this.save();
-            }
+            alarmMgr.cancel(this.storage.info.alarmId);
+            logger.log(`service onEvent(${p})`);
+            this.storage.info.alarmId = 0;
+            this.save();
         }
         appServiceMgr.exit();
     }
 
     onDestroy() {
         this.dropConnection();
-        if ( !this.storage.info.lastUpdSuccess) {
+        if (!this.storage.info.lastUpdSuccess) {
             logger.log(`FAIL UPDATE`);
         }
     }
 
-    save(){
+    save() {
         this.storage.saveItem(LOCAL_STORAGE.INFO);
     }
 }
@@ -216,13 +210,17 @@ AppService({
     onInit(p) {
         try {
             logger.log(`service onInit(${p})`);
-            let data = {action: FETCH_SERVICE_ACTION.START_SERVICE};
+            let data = {action: FETCH_SERVICE_ACTION.WRONG_ACTION};
             try {
                 if (!(!p || p === 'undefined')) {
                     data = JSON.parse(p);
                 }
             } catch (e) {
                 data = {action: p}
+            }
+            if (data.action === FETCH_SERVICE_ACTION.WRONG_ACTION) {
+                logger.log('WRONG_ACTION');
+                return;
             }
             service = new WatchdripService()
             service.init(data);

@@ -1,5 +1,6 @@
 import {TEST_DATA} from "../../config/constants";
 import {MINUTE_IN_MS} from "../../../shared/date";
+import {getTimestamp} from "../../helper";
 
 export class TreatmentData {
     constructor(insulin, carbs, time, predictIOB, predictBWP) {
@@ -41,7 +42,7 @@ export class TreatmentData {
 
     static createEmpty() {
         if (TEST_DATA){
-            return new TreatmentData("10", "20", Date.now()-6*MINUTE_IN_MS, "10u" ,"20u");
+            return new TreatmentData("10", "20", getTimestamp()-6*MINUTE_IN_MS, "10u" ,"20u");
         }
         return new TreatmentData("", "", null, "", "");
     }

@@ -4,8 +4,8 @@
 export const SERVICE_NAME = "app-service/fetch_service";
 
 export const WATCHDRIP_SETTINGS_DEFAULTS = {
-    disableUpdates: false,
-    showLog: false,
-    useBGService: false,
-    graphInfo: true,
+    s_disableUpdates: false,
+    s_showLog: false,
+    s_useBGService: false,
+    s_graphInfo: true,
 };

@@ -17,7 +17,8 @@ export class LocalInfoStorage {
             lastUpd: 0,
             lastUpdAttempt: 0,
             lastUpdSuccess: false,
-            alarmId: 0
+            alarmId: 0,
+            lastFile: ''
         };
         this.read();
     }
