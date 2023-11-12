@@ -22,7 +22,6 @@ import {
 import {LOCAL_STORAGE, LocalInfoStorage} from "../utils/watchdrip/localInfoStorage";
 import {WatchdripData} from "../utils/watchdrip/watchdrip-data";
 
-import { setScrollLock } from '@zos/page'
 import {getDataTypeConfig, getTimestamp, img} from "../utils/helper";
 
 const logger = log.getLogger("watchdrip_app");
@@ -137,9 +136,6 @@ class Watchdrip {
     }
 
     config_page() {
-         setScrollLock({
-             lock: true,
-         })
         this.configScrollList = hmUI.createWidget(hmUI.widget.SCROLL_LIST,
             {
                 ...style.CONFIG_PAGE_SCROLL,
@@ -157,7 +153,6 @@ class Watchdrip {
                 },
                 ...this.getConfigData()
             });
-
     }
 
     readInfo() {

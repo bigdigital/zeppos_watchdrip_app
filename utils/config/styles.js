@@ -182,9 +182,9 @@ export const BG_TREND_IMAGE = {
 };
 
 export const BG_STALE_RECT = {
-  x: (DEVICE_WIDTH - px(180)) / 2,
+  x: (DEVICE_WIDTH - px(170)) / 2,
   y: px(130),
-  w: px(180),
+  w: px(170),
   h: px(5),
   color: Colors.white,
   visible: false,
@@ -236,7 +236,7 @@ export const CONFIG_PAGE_SCROLL_ITEM_CONFIG = [
 export const CONFIG_PAGE_SCROLL = {
   x: SCROLL_ITEM_PADDING,
   y: SCROLL_PAGE_Y,
-  h: DEVICE_HEIGHT - px(20),
+  h: DEVICE_HEIGHT- px(200),
   w: DEVICE_WIDTH - SCROLL_ITEM_PADDING*2,
   item_space: px(10),
   item_config: CONFIG_PAGE_SCROLL_ITEM_CONFIG,
