@@ -1,5 +1,6 @@
 import {Commands, SERVER_INFO_URL, SERVER_URL,} from "../utils/config/constants";
-import {BaseSideService} from "../core/side/zml-side";
+import {BaseSideService} from "../core/zml-side.debug";
+
 const fetchInfo = async (res, url) => {
     let resp = {};
 

@@ -352,6 +352,7 @@ class Watchdrip {
     getAlarmId() {
         let alarms = alarmMgr.getAllAlarms();
         if (alarms.length) {
+            debug.log("getAlarmId " +alarms[0]);
             return alarms[0];
         }
         return 0;

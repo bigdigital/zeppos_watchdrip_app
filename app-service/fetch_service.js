@@ -1,16 +1,16 @@
 import {log} from "@zos/utils";
 import * as appServiceMgr from "@zos/app-service";
 import {Time} from "@zos/sensor";
-import {Commands, FETCH_SERVICE_ACTION} from "../utils/config/constants";
+import {Commands, DATA_TIMER_UPDATE_INTERVAL_MS, FETCH_SERVICE_ACTION} from "../utils/config/constants";
 
 import {connectStatus} from '@zos/ble'
 import {LOCAL_STORAGE, LocalInfoStorage} from "../utils/watchdrip/localInfoStorage";
-import {createDeviceMessage} from "../core/device/device-message";
 import * as alarmMgr from '@zos/alarm'
 import {GRAPH_FETCH_PARAM, SERVICE_NAME, WF_INFO_FILE} from "../utils/config/global-constants";
 import {Path} from "../utils/path";
 import {zeroPad} from "../shared/date";
 import {getTimestamp} from "../utils/helper";
+import {BaseApp} from "../core/zml-app.debug";
 
 const logger = log.getLogger("fetch-service");
 
@@ -25,34 +25,30 @@ class WatchdripService {
     constructor() {
         this.storage = new LocalInfoStorage(localStorage)
         this.timeSensor = new Time();
-        this.connectionActive = false;
         this.infoFile = new Path("full", WF_INFO_FILE);
         this.updatingData = false;
+        this.contServiceStarted = false;
+
+        this.baseApp = BaseApp({
+            globalData: getApp()._options.globalData
+        });
     }
 
     initConnection() {
-        if (this.connectionActive) {
-            return;
-        }
         logger.log("initConnection");
-        this.connectionActive = true;
 
         //we need to recreate connection to force start side app
-        this.dropConnection();
-        messaging = createDeviceMessage();
-        messaging.connect();
+        this.baseApp.onCreate();
+        messaging = this.baseApp.globalData.messaging;
     }
 
     dropConnection() {
-        if (!this.connectionActive || !messaging) {
-            return;
-        }
         logger.log("dropConnection");
-        messaging.disConnect();
-        this.connectionActive = false;
+        this.baseApp.onDestroy();
     }
 
     init(data) {
+        logger.log(`init ${data.action}`);
         switch (data.action) {
             case FETCH_SERVICE_ACTION.START_SERVICE:
                 this.prepare();
@@ -69,13 +65,22 @@ class WatchdripService {
 
     prepare() {
         logger.log("prepare");
+        let alarmId = this.getAlarmId();
         if (this.storage.settings.s_useBGService) {
+
+            if (alarmId) {
+                logger.log(`remove alarm id ${alarmId})`);
+                alarmMgr.cancel(alarmId);
+            }
+            if (this.contServiceStarted) return;
             this.timeSensor.onPerMinute(() => {
                 logger.log("onPerMinute");
+                this.updatingData = false;
+                this.storage.readItem(LOCAL_STORAGE.SETTINGS);
                 this.fetchInfo();
             });
+            this.contServiceStarted = true;
         } else {
-            let alarmId = this.getAlarmId();
             if (!alarmId) {
                 let param = JSON.stringify({
                     action: FETCH_SERVICE_ACTION.UPDATE
@@ -92,7 +97,7 @@ class WatchdripService {
                 let newAlarmId = alarmMgr.set(option);
 
                 if (newAlarmId) {
-                    logger.log(`runAlarm id ${this.storage.info.alarmId}`);
+                    logger.log(`runAlarm id ${newAlarmId}`);
                 } else {
                     logger.log('!!!cannot create ALARM');
                 }
@@ -101,6 +106,8 @@ class WatchdripService {
             }
         }
     }
+
+
 
     getAlarmId() {
         let alarms = alarmMgr.getAllAlarms();
@@ -123,7 +130,7 @@ class WatchdripService {
     }
 
     fetchInfo() {
-        //logger.log("fetchInfo " + this.getTime());
+        logger.log("fetchInfo " + this.getTime());
         if (this.updatingData) {
             logger.log("updatingData, return");
             return;
@@ -137,12 +144,17 @@ class WatchdripService {
             return;
         }
         this.initConnection();
+
+        this.requestInfo();
+    }
+
+    requestInfo() {
         this.updatingData = true;
+        console.log('requestInfo');
         let params = '';
         if (this.storage.settings.s_graphInfo) {
             params = GRAPH_FETCH_PARAM;
         }
-        console.log('request');
         messaging.request({
             method: Commands.getInfo,
             params: params,
@@ -167,10 +179,12 @@ class WatchdripService {
                 logger.log("fetch error:" + error);
             })
             .finally(() => {
+                logger.log("lastUpdSuccess:" + this.storage.info.lastUpdSuccess);
                 this.save();
                 this.updatingData = false;
                 this.dropConnection();
                 if (!this.storage.info.lastUpdSuccess) {
+
                     this.setError('status_start_watchdrip');
                 } else {
                     this.resetError();
@@ -211,6 +225,7 @@ class WatchdripService {
             logger.log(`remove alarm id ${alarmId})`);
             alarmMgr.cancel(alarmId);
         }
+        this.dropConnection();
         appServiceMgr.exit();
     }
 
@@ -228,18 +243,14 @@ class WatchdripService {
 
 function handle(p) {
     try {
-        logger.log(`service onInit(${p})`);
-        let data = {action: FETCH_SERVICE_ACTION.WRONG_ACTION};
+        logger.log(`handle`);
+        let data = {action: FETCH_SERVICE_ACTION.START_SERVICE};
         try {
             if (!(!p || p === 'undefined')) {
                 data = JSON.parse(p);
             }
         } catch (e) {
             data = {action: p}
-        }
-        if (data.action === FETCH_SERVICE_ACTION.WRONG_ACTION) {
-            logger.log('WRONG_ACTION');
-            return;
         }
         service = new WatchdripService()
         service.init(data);
@@ -255,10 +266,13 @@ AppService({
         handle(p);
     },
     onInit(p) {
+        logger.log(`service onInit(${p})`);
         handle(p);
     },
     onDestroy() {
         logger.log("service on destroy invoke");
-        service.onDestroy();
+        if (service) {
+            service.onDestroy();
+        }
     }
 });

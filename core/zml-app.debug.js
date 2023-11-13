@@ -10,10 +10,13 @@ if (typeof __$$R$$__ !== 'undefined') {
   _r = () => {};
 }
 
+
+let getPackageInfo = null;
+
 if (isZeppOS1()) {
-  hmApp.getPackageInfo;
+  getPackageInfo = hmApp.getPackageInfo;
 } else if (isZeppOS2()) {
-  _r('@zos/app').getPackageInfo;
+  getPackageInfo = _r('@zos/app').getPackageInfo;
 }
 
 if (isZeppOS1()) {
@@ -77,77 +80,26 @@ function isSideService() {
   return typeof messaging !== 'undefined'
 }
 
-let logger$3 = null;
+let logger$2 = null;
 
 
 if (isZeppOS1()) {
   // zeppos 1.0
-  logger$3 = DeviceRuntimeCore.HmLogger;
+  logger$2 = DeviceRuntimeCore.HmLogger;
 } else if (isZeppOS2()) {
   // zeppos 2.0
-  logger$3 = _r('@zos/utils').log;
+  logger$2 = _r('@zos/utils').log;
 } else if (isSideService()) {
   // side service 1.0
   if (typeof Logger !== 'undefined') {
-    logger$3 = Logger;
+    logger$2 = Logger;
   }
 }
 
-class EventBus {
-  constructor() {
-    this.listeners = new Map();
-  }
+const EventBus = _r('@zos/utils').EventBus;
 
-  on(type, cb) {
-    if (!this.listeners.has(type)) {
-      this.listeners.set(type, []);
-    }
-
-    this.listeners.get(type).push(cb);
-  }
-
-  off(type, cb) {
-    if (!type) return
-
-    if (cb) {
-      const cbs = this.listeners.get(type);
-
-      if (!cbs) return
-      const index = cbs.findIndex((i) => i === cb);
-
-      if (index >= 0) {
-        cbs.splice(index, 1);
-      }
-    } else {
-      this.listeners.delete(type);
-    }
-  }
-
-  emit(type, ...args) {
-    for (let cb of this.listeners.get(type) ?? []) {
-      cb && cb(...args);
-    }
-  }
-
-  clear() {
-    this.listeners.clear();
-  }
-
-  once(type, cb) {
-    const onceCb = (...args) => {
-      this.off(type, onceCb);
-      cb(...args);
-    };
-    this.on(type, onceCb);
-  }
-
-  count(type) {
-    return (this.listeners.get(type) ?? []).length
-  }
-}
-
-const _setTimeout = setTimeout;
-const _clearTimeout = clearTimeout;
+const _setTimeout = _r('@zos/timer').setTimeout;
+const _clearTimeout = _r('@zos/timer').clearTimeout;
 
 function Deferred() {
   const defer = {
@@ -220,11 +172,11 @@ function bin2hex(bin) {
   return buf2hex(bin2buf(bin))
 }
 
-const logger$2 = isZeppOS()
-  ? logger$3.getLogger('device-message')
-  : logger$3.getLogger('side-message');
+const logger$1 = isZeppOS()
+  ? logger$2.getLogger('device-message')
+  : logger$2.getLogger('side-message');
 
-const DEBUG = false;
+const DEBUG = true;
 
 const MESSAGE_SIZE = 3600;
 const MESSAGE_HEADER = 16;
@@ -324,7 +276,7 @@ class Session extends EventBus {
     }
 
     if (payload.payloadLength !== payload.payload.byteLength) {
-      logger$2.error(
+      logger$1.error(
           'receive chunk data length error, expect %d but %d',
           payload.payloadLength,
           payload.payload.byteLength,
@@ -364,7 +316,7 @@ class Session extends EventBus {
     this.finishChunk.payloadLength = this.finishChunk.payload.byteLength;
 
     if (this.finishChunk.totalLength !== this.finishChunk.payloadLength) {
-      logger$2.error(
+      logger$1.error(
           'receive full data length error, expect %d but %d',
           this.finishChunk.payloadLength,
           this.finishChunk.payload.byteLength,
@@ -560,7 +512,7 @@ class MessageBuilder extends EventBus {
 
     this.ble &&
       this.ble.createConnect((index, data, size) => {
-        logger$2.warn(
+        logger$1.warn(
             '[RAW] [R] receive index=>%d size=>%d bin=>%s',
             index,
             size,
@@ -573,7 +525,7 @@ class MessageBuilder extends EventBus {
   }
 
   disConnect(cb) {
-    logger$2.debug('app ble disconnect');
+    logger$1.debug('app ble disconnect');
     this.sendClose();
     this.off('message');
     this.handlers.clear();
@@ -586,7 +538,7 @@ class MessageBuilder extends EventBus {
     this.appSidePort = globalThis.getApp().port2;
     messaging &&
       messaging.peerSocket.addListener('message', (message) => {
-        logger$2.warn(
+        logger$1.warn(
             '[RAW] [R] receive size=>%d bin=>%s',
             message.byteLength,
             bin2hex(message),
@@ -649,7 +601,7 @@ class MessageBuilder extends EventBus {
   }
 
   sendShake() {
-    logger$2.info('shake send');
+    logger$1.info('shake send');
     const shake = this.buildShake();
     this.sendMsg(shake);
   }
@@ -668,7 +620,7 @@ class MessageBuilder extends EventBus {
   }
 
   sendClose() {
-    logger$2.info('close send');
+    logger$1.info('close send');
     const close = this.buildClose();
     this.sendMsg(close);
   }
@@ -730,7 +682,7 @@ class MessageBuilder extends EventBus {
   sendBin(buf, debug = DEBUG) {
     // ble 发送消息
     debug &&
-      logger$2.warn(
+      logger$1.warn(
         '[RAW] [S] send size=%d bin=%s',
         buf.byteLength,
         bin2hex(buf.buffer),
@@ -745,7 +697,7 @@ class MessageBuilder extends EventBus {
   sendBinBySide(buf, debug = DEBUG) {
     // side 发送消息
     debug &&
-      logger$2.warn(
+      logger$1.warn(
         '[RAW] [S] send size=%d bin=%s',
         buf.byteLength,
         bin2hex(buf.buffer),
@@ -834,13 +786,13 @@ class MessageBuilder extends EventBus {
     }
 
     if (offset === userDataLength) {
-      logger$2.debug(
+      logger$1.debug(
           'HmProtocol send ok msgSize=> %d dataSize=> %d',
           offset,
           userDataLength,
         );
     } else {
-      logger$2.error(
+      logger$1.error(
           'HmProtocol send error msgSize=> %d dataSize=> %d',
           offset,
           userDataLength,
@@ -1108,10 +1060,10 @@ class MessageBuilder extends EventBus {
     const data = this.readBin(bin);
     this.emit('raw', bin);
 
-    logger$2.debug('receive data=>', JSON.stringify(data));
+    logger$1.debug('receive data=>', JSON.stringify(data));
     if (data.flag === MessageFlag.App && data.type === MessageType.Shake) {
       this.appSidePort = data.port2;
-      logger$2.debug('shake success appSidePort=>', data.port2);
+      logger$1.debug('shake success appSidePort=>', data.port2);
       this.emit('shake:response', data);
       this.clearShakeTimer();
       this.shakeTask.resolve();
@@ -1131,15 +1083,15 @@ class MessageBuilder extends EventBus {
     } else if (data.flag === MessageFlag.App && data.type === MessageType.Log) {
       this.emit('log', data.payload);
     } else if (data.flag === MessageFlag.Runtime) {
-      logger$2.debug('receive runtime => flag %d type %d', data.flag, data.type);
+      logger$1.debug('receive runtime => flag %d type %d', data.flag, data.type);
     } else if (
       data.flag === MessageFlag.App &&
       data.type === MessageType.Close
     ) {
       this.appSidePort = 0;
-      logger$2.debug('receive close =>', this.appSidePort);
+      logger$1.debug('receive close =>', this.appSidePort);
     } else {
-      logger$2.error('error appSidePort=>%d data=>%j', this.appSidePort, data);
+      logger$1.error('error appSidePort=>%d data=>%j', this.appSidePort, data);
     }
   }
 
@@ -1253,7 +1205,7 @@ class MessageBuilder extends EventBus {
         this.errorIfBleDisconnect();
         this.errorIfSideServiceDisconnect();
 
-        logger$2.debug(
+        logger$1.debug(
             'traceId=>%d payload=>%s',
             traceId,
             payload.toString('hex'),
@@ -1275,8 +1227,8 @@ class MessageBuilder extends EventBus {
             break
         }
 
-        logger$2.debug('request id=>%d payload=>%j', requestId, data);
-        logger$2.debug('response id=>%d payload=>%j', requestId, result);
+        logger$1.debug('request id=>%d payload=>%j', requestId, data);
+        logger$1.debug('response id=>%d payload=>%j', requestId, result);
 
         requestPromiseTask.resolve(result);
       };
@@ -1317,7 +1269,7 @@ class MessageBuilder extends EventBus {
             return resolve()
           }
 
-          logger$2.error(
+          logger$1.error(
               `request timeout in ${opts.timeout}ms error=> %d data=> %j`,
               requestId,
               data,
@@ -1335,7 +1287,7 @@ class MessageBuilder extends EventBus {
         }),
       ])
         .catch((e) => {
-          logger$2.error('error %j', e);
+          logger$1.error('error %j', e);
           throw e
         })
         .finally(() => {
@@ -1403,7 +1355,7 @@ class MessageBuilder extends EventBus {
   }
 }
 
-const logger$1 = logger$3.getLogger('message-builder');
+const logger = logger$2.getLogger('message-builder');
 
 const shakeTimeout = 5000;
 const requestTimeout = 60000;
@@ -1466,7 +1418,7 @@ function wrapperMessage(messageBuilder) {
     },
     request(data) {
       isZeppOS() && messageBuilder.fork(this.shakeTimeout);
-      logger$1.debug(
+      logger.debug(
           'current request count=>%d',
           messageBuilder.getRequestCount(),
         );
@@ -1491,7 +1443,7 @@ function wrapperMessage(messageBuilder) {
     // 设备接口
     connect() {
       messageBuilder.connect(() => {
-        logger$1.debug('DeviceApp messageBuilder connect with SideService');
+        logger.debug('DeviceApp messageBuilder connect with SideService');
       });
       return this
     },
@@ -1500,14 +1452,14 @@ function wrapperMessage(messageBuilder) {
       this.offOnRequest();
       this.offOnCall();
       messageBuilder.disConnect(() => {
-        logger$1.debug('DeviceApp messageBuilder disconnect SideService');
+        logger.debug('DeviceApp messageBuilder disconnect SideService');
       });
       return this
     },
     // 伴生服务接口
     start() {
       messageBuilder.listen(() => {
-        logger$1.debug(
+        logger.debug(
             'SideService messageBuilder start to listen to DeviceApp',
           );
       });
@@ -1518,54 +1470,25 @@ function wrapperMessage(messageBuilder) {
       this.offOnRequest();
       this.offOnCall();
       messageBuilder.disConnect(() => {
-        logger$1.debug('SideService messageBuilder stop to listen to DeviceApp');
+        logger.debug('SideService messageBuilder stop to listen to DeviceApp');
       });
       return this
     },
   }
 }
 
-const messageBuilder = new MessageBuilder();
+const appDevicePort = 20;
+const appSidePort = 0;
 
-const device = wrapperMessage(messageBuilder);
+function createDeviceMessage() {
+  const messageBuilder = new MessageBuilder({
+    appId: getPackageInfo().appId,
+    appDevicePort,
+    appSidePort,
+  });
 
-const settingsLib = {
-  onChange(cb) {
-    if (!cb) return this
-    settings.settingsStorage.addListener('change', cb);
-    return this
-  },
-  offChange() {
-    settings.settingsStorage.removeListener('change');
-    return this
-  },
-  getItem(i) {
-    return settings.settingsStorage.getItem(i)
-  },
-  setItem(i, value) {
-    return settings.settingsStorage.setItem(i, value)
-  },
-  clear() {
-    return settings.settingsStorage.clear()
-  },
-  removeItem(i) {
-    settings.settingsStorage.removeItem(i);
-  },
-  getAll() {
-    return settings.settingsStorage.toObject()
-  },
-};
-
-const downloaderLib = {
-  download(url, opts) {
-    const task = network.downloader.downloadFile({
-      url,
-      ...opts,
-    });
-
-    return task
-  },
-};
+  return wrapperMessage(messageBuilder)
+}
 
 function getFileTransfer(fileTransfer) {
   /**
@@ -1637,142 +1560,40 @@ function getFileTransfer(fileTransfer) {
   }
 }
 
-const fileTransferLib = getFileTransfer(transferFile);
+const TransferFile = _r('@zos/ble/TransferFile');
+const fileTransferLib = getFileTransfer(new TransferFile());
 
-function addBaseURL(opts) {
-  const params = {
-    timeout: 10000,
-    ...opts,
-  };
-
-  params.url = new URL(opts.url, params.baseURL).toString();
-
-  return params
-}
-
-const logger = Logger.getLogger(sideService.appInfo.app.appName);
-
-function BaseSideService({
-  state = {},
-  onInit,
-  onRun,
-  onDestroy,
-  ...other
-} = {}) {
+function BaseApp({ globalData = {}, onCreate, onDestroy, ...other } = {}) {
   return {
-    state,
+    globalData,
     ...other,
-    onInit(opts) {
-      this._onCall = this.onCall?.bind(this);
-      this._onRequest = this.onRequest?.bind(this);
-      device.onCall(this._onCall).onRequest(this.__onRequest.bind(this));
+    onCreate(...opts) {
+      const messaging = createDeviceMessage();
+      this.globalData.messaging = messaging;
 
-      this._onReceivedFile = this.onReceivedFile?.bind(this);
-      fileTransferLib.onSideServiceFileFinished(this._onReceivedFile);
+      messaging
+        .onCall(this.onCall?.bind(this))
+        .onRequest(this.onRequest?.bind(this))
+        .connect();
 
-      this._onSettingsChange = this.onSettingsChange?.bind(this);
-      settingsLib.onChange(this._onSettingsChange);
+      fileTransferLib.onFile(this.onReceivedFile?.bind(this));
 
-      device.start();
-      onInit?.apply(this, opts);
-      Object.entries(other).forEach(([k, v]) => {
-        if (typeof k === 'string' && k.startsWith('onInit')) {
-          v.apply(this, opts);
-        }
-      });
-
-      if (typeof sideService !== 'undefined') {
-        logger.log('sideService start launchArgs=>', sideService.launchArgs);
-        if (sideService.launchReasons.settingsChanged) {
-          this._onSettingsChange(sideService.launchArgs);
-        }
-
-        if (sideService.launchReasons.fileTransfer) {
-          fileTransferLib.emitFile();
-        }
-      }
+      onCreate?.apply(this, opts);
     },
-    onRun(opts) {
-      onRun?.apply(this, opts);
-      Object.entries(other).forEach(([k, v]) => {
-        if (typeof k === 'string' && k.startsWith('onRun')) {
-          v.apply(this, opts);
-        }
-      });
-    },
-    onDestroy(opts) {
-      if (this._onCall) {
-        device.offOnCall(this._onCall);
-      }
+    onDestroy(...opts) {
+      const messaging = this.globalData.messaging;
+      messaging.offOnCall().offOnRequest().disConnect();
 
-      if (this._onRequest) {
-        device.offOnRequest(this._onRequest);
-      }
-
-      device.stop();
-
-      if (this._onReceivedFile) {
-        fileTransferLib.offFile(this._onReceivedFile);
-      }
-
-      if (this._onSettingsChange) {
-        settingsLib.offChange(this._onSettingsChange);
-      }
-
-      Object.entries(other).forEach(([k, v]) => {
-        if (typeof k === 'string' && k.startsWith('onDestroy')) {
-          v.apply(this, opts);
-        }
-      });
-
+      fileTransferLib.offFile();
       onDestroy?.apply(this, opts);
     },
-    request(data) {
-      return device.request(data)
-    },
-    call(data) {
-      return device.call(data)
-    },
-    fetch(opt) {
-      return fetch(addBaseURL(opt))
-    },
-    sendFile(path, opts) {
-      return fileTransferLib.sendFile(path, opts)
-    },
-    download(url, opts = {}) {
-      return downloaderLib.download(url, opts)
-    },
-    __onRequest(req, res) {
-      if (req.method === 'http.request') {
-        return this.httpRequestHandler(req, res)
-      } else {
-        return this._onRequest(req, res)
-      }
-    },
-    httpRequestHandler(req, res) {
-      return this.fetch(req.params)
-        .then((result) => {
-          res(null, {
-            status: result.status,
-            statusText: result.statusText,
-            headers: result.headers,
-            body: result.body,
-          });
-        })
-        .catch((e) => {
-          return res({
-            code: 1,
-            message: e.message,
-          })
-        })
+    httpRequest(data) {
+      return messaging.request({
+        method: 'http.request',
+        params: data,
+      })
     },
   }
 }
 
-const convertLib = {
-  convert(opts) {
-    return image.convert(opts)
-  },
-};
-
-export { BaseSideService, convertLib, settingsLib };
+export { BaseApp };
