@@ -120,9 +120,8 @@ export class Path {
     fetchText(limit = Infinity) {
         const buf = this.fetch(limit);
         if (!buf) return buf;
-        const view = new Uint8Array(buf);
-        const text = FsTools.decodeUtf8(view, limit)[0];
-        //console.log(text);
+        let text= FsTools.ab2str(buf)
+       // console.log(text);
         return text;
     }
 
@@ -141,7 +140,8 @@ export class Path {
     }
 
     overrideWithText(text) {
-        return this.override(FsTools.strToUtf8(text));
+        //console.log(text);
+        return this.override(FsTools.str2ab(text));
     }
 
     overrideWithJSON(data) {
@@ -204,80 +204,16 @@ export class FsTools {
         return `/storage/${base}/data/${idn}${path}`;
     }
 
-    // https://stackoverflow.com/questions/18729405/how-to-convert-utf8-string-to-byte-array
-    static strToUtf8(str) {
-        var utf8 = [];
-        for (var i = 0; i < str.length; i++) {
-            var charcode = str.charCodeAt(i);
-            if (charcode < 0x80) utf8.push(charcode);
-            else if (charcode < 0x800) {
-                utf8.push(0xc0 | (charcode >> 6),
-                    0x80 | (charcode & 0x3f));
-            } else if (charcode < 0xd800 || charcode >= 0xe000) {
-                utf8.push(0xe0 | (charcode >> 12),
-                    0x80 | ((charcode >> 6) & 0x3f),
-                    0x80 | (charcode & 0x3f));
-            } else {
-                i++;
-                charcode = 0x10000 + (((charcode & 0x3ff) << 10) |
-                    (str.charCodeAt(i) & 0x3ff));
-                utf8.push(0xf0 | (charcode >> 18),
-                    0x80 | ((charcode >> 12) & 0x3f),
-                    0x80 | ((charcode >> 6) & 0x3f),
-                    0x80 | (charcode & 0x3f));
-            }
+    static str2ab(str) {
+        let buf = new ArrayBuffer(str.length);
+        let buf_view = new Uint8Array(buf);
+        for (let i=0, strLen=str.length; i < strLen; i++) {
+            buf_view[i] = str.charCodeAt(i);
         }
-
-        return new Uint8Array(utf8).buffer;
+        return buf;
     }
 
-    // source: https://stackoverflow.com/questions/13356493/decode-utf-8-with-javascript
-    static decodeUtf8(array, outLimit = Infinity, startPosition = 0) {
-        let out = "";
-        let length = array.length;
-
-        let i = startPosition,
-            c, char2, char3;
-        while (i < length && out.length < outLimit) {
-            c = array[i++];
-            switch (c >> 4) {
-                case 0:
-                case 1:
-                case 2:
-                case 3:
-                case 4:
-                case 5:
-                case 6:
-                case 7:
-                    // 0xxxxxxx
-                    out += String.fromCharCode(c);
-                    break;
-                case 12:
-                case 13:
-                    // 110x xxxx   10xx xxxx
-                    char2 = array[i++];
-                    out += String.fromCharCode(
-                        ((c & 0x1f) << 6) | (char2 & 0x3f)
-                    );
-                    break;
-                case 14:
-                    // 1110 xxxx  10xx xxxx  10xx xxxx
-                    char2 = array[i++];
-                    char3 = array[i++];
-                    out += String.fromCharCode(
-                        ((c & 0x0f) << 12) |
-                        ((char2 & 0x3f) << 6) |
-                        ((char3 & 0x3f) << 0)
-                    );
-                    break;
-            }
-        }
-
-        return [out, i - startPosition];
+    static ab2str(buf) {
+        return String.fromCharCode.apply(null, new Uint8Array(buf));
     }
-
-    static Utf8ArrayToStr(array) {
-        return FsTools.decodeUtf8(array)[0];
-    }
-
 }

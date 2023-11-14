@@ -35,3 +35,37 @@ export const getDataTypeConfig = (id_type, i_start, i_end) => {
 export function getTimestamp() {
     return Date.now();
 }
+
+export function objToString(obj, ndeep) {
+    if (obj == null) {
+        return String(obj);
+    }
+    switch (typeof obj) {
+        case "string":
+            return obj;
+        case "function":
+            return obj.name || obj.toString();
+        case "object":
+            var indent = Array(ndeep || 1).join(" "),
+                isArray = Array.isArray(obj);
+            return (
+                "{["[+isArray] +
+                Object.keys(obj)
+                    .map(function (key) {
+                        return (
+                            "\r\n " +
+                            indent +
+                            key +
+                            ": " +
+                            objToString(obj[key], (ndeep || 1) + 1)
+                        );
+                    })
+                    .join(",") +
+                "\r\n" +
+                indent +
+                "}]"[+isArray]
+            );
+        default:
+            return obj.toString();
+    }
+}

@@ -1,3 +1,5 @@
+import {objToString} from "../utils/helper";
+
 function isHmAppDefined() {
   return typeof hmApp !== 'undefined'
 }
@@ -439,7 +441,12 @@ class MessageBuilder extends EventBus {
 
     this.shakeTask = null;
     this.waitingShakePromise = null;
+
     this.shakeStatus = ShakeStatus.start;
+    if (appSidePort ){
+      this.shakeStatus = ShakeStatus.success;
+    }
+
     this.shakeTimer = 0;
 
     this.sessionMgr = new SessionMgr();
@@ -457,6 +464,16 @@ class MessageBuilder extends EventBus {
 
     this.shakeTask = Deferred();
     this.waitingShakePromise = this.shakeTask.promise;
+
+    if (this.shakeStatus === ShakeStatus.success){
+
+      logger$1.warn(
+          'shakeTask auto resolve ',
+      );
+      this.shakeTask.resolve();
+      return this.waitingShakePromise
+    }
+
     this.shakeStatus = ShakeStatus.start;
     this.clearShakeTimer();
 
@@ -513,11 +530,17 @@ class MessageBuilder extends EventBus {
     this.ble &&
       this.ble.createConnect((index, data, size) => {
         logger$1.warn(
-            '[RAW] [R] receive index=>%d size=>%d bin=>%s',
+            '[RAW] [R] receive index=>%d size=>%d',
             index,
-            size,
-            bin2hex(data),
-          );
+            size
+        );
+
+        // logger$1.warn(
+        //     '[RAW] [R] receive index=>%d size=>%d bin=>%s',
+        //     index,
+        //     size,
+        //     bin2hex(data),
+        //   );
         this.onFragmentData(data);
       });
 
@@ -583,6 +606,13 @@ class MessageBuilder extends EventBus {
     offset += 4;
 
     buf.fill(data.payload, offset, data.payload.byteLength + offset);
+
+
+    debug &&
+    logger$1.warn(
+        'sendBin=%d ',
+        buf.byteLength,
+    );
 
     return buf
   }
@@ -682,11 +712,16 @@ class MessageBuilder extends EventBus {
   sendBin(buf, debug = DEBUG) {
     // ble 发送消息
     debug &&
-      logger$1.warn(
-        '[RAW] [S] send size=%d bin=%s',
+    logger$1.warn(
+        'sendBin=%d ',
         buf.byteLength,
-        bin2hex(buf.buffer),
-      );
+    );
+    // debug &&
+    //   logger$1.warn(
+    //     '[RAW] [S] send size=%d bin=%s',
+    //     buf.byteLength,
+    //     bin2hex(buf.buffer),
+    //   );
     const result = this.ble.send(buf.buffer, buf.byteLength);
 
     if (!result) {
@@ -807,6 +842,12 @@ class MessageBuilder extends EventBus {
     contentType,
     dataType,
   }) {
+
+    logger$1.warn(
+        'sendJson %s',
+        objToString(json)
+    );
+
     const packageBin = json2buf(json);
     const traceId = requestId ? requestId : genTraceId();
 
@@ -1060,7 +1101,8 @@ class MessageBuilder extends EventBus {
     const data = this.readBin(bin);
     this.emit('raw', bin);
 
-    logger$1.debug('receive data=>', JSON.stringify(data));
+    logger$1.debug('received data');
+    //logger$1.debug('received data=>', objToString(data));
     if (data.flag === MessageFlag.App && data.type === MessageType.Shake) {
       this.appSidePort = data.port2;
       logger$1.debug('shake success appSidePort=>', data.port2);
@@ -1205,11 +1247,16 @@ class MessageBuilder extends EventBus {
         this.errorIfBleDisconnect();
         this.errorIfSideServiceDisconnect();
 
+
         logger$1.debug(
-            'traceId=>%d payload=>%s',
+            'transact traceId=>%d',
             traceId,
-            payload.toString('hex'),
-          );
+        );
+        // logger$1.debug(
+        //     'traceId=>%d payload=>%s',
+        //     traceId,
+        //     payload.toString('hex'),
+        //   );
 
         let result;
         switch (dataType) {
@@ -1227,9 +1274,9 @@ class MessageBuilder extends EventBus {
             break
         }
 
-        logger$1.debug('request id=>%d payload=>%j', requestId, data);
-        logger$1.debug('response id=>%d payload=>%j', requestId, result);
-
+        logger$1.debug('request id=>%d', requestId);
+        // logger$1.debug('request id=>%d payload=>%j', requestId, data);
+        // logger$1.debug('response id=>%d payload=>%j', requestId, result);
         requestPromiseTask.resolve(result);
       };
 
@@ -1364,6 +1411,7 @@ function wrapperMessage(messageBuilder) {
   return {
     shakeTimeout,
     requestTimeout,
+    transport: messageBuilder,
     onCall(cb) {
       if (!cb) return this
       messageBuilder.on('call', ({ payload }) => {
@@ -1478,9 +1526,8 @@ function wrapperMessage(messageBuilder) {
 }
 
 const appDevicePort = 20;
-const appSidePort = 0;
 
-function createDeviceMessage() {
+function createDeviceMessage(appSidePort = 0) {
   const messageBuilder = new MessageBuilder({
     appId: getPackageInfo().appId,
     appDevicePort,
@@ -1563,13 +1610,15 @@ function getFileTransfer(fileTransfer) {
 const TransferFile = _r('@zos/ble/TransferFile');
 const fileTransferLib = getFileTransfer(new TransferFile());
 
-function BaseApp({ globalData = {}, onCreate, onDestroy, ...other } = {}) {
+function BaseApp({ globalData = {}, onCreate, onDestroy, sidePort, onMessagingCreate, ...other } = {}) {
   return {
     globalData,
     ...other,
     onCreate(...opts) {
-      const messaging = createDeviceMessage();
+      const messaging = createDeviceMessage(sidePort);
       this.globalData.messaging = messaging;
+
+      onMessagingCreate?.apply(this);
 
       messaging
         .onCall(this.onCall?.bind(this))

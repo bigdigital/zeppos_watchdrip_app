@@ -97,7 +97,11 @@ class Watchdrip {
     main_page() {
         this.initFetchService();
         this.infoFile = new Path("full", WF_INFO_FILE);
+
         this.watchdripData = new WatchdripData();
+
+        this.readInfo();
+
         let pkg = getPackageInfo();
         this.widgets.versionText = hmUI.createWidget(hmUI.widget.TEXT, {
             ...style.VERSION_TEXT,

@@ -8,6 +8,14 @@ export const LOCAL_STORAGE = {
     INFO: 'info',
 };
 
+export const BT_STATE = {
+    DISCONNECTED: 'DISCONNECTED',
+    SHAKE: 'SHAKE',
+    SHAKE_DONE: 'SHAKE_DONE',
+    REQUEST: 'REQUEST',
+    IDLE: 'IDLE',
+};
+
 export class LocalInfoStorage {
     constructor(localStorage) {
         storage = localStorage;
@@ -17,12 +25,15 @@ export class LocalInfoStorage {
             lastUpd: 0,
             lastUpdAttempt: 0,
             lastUpdSuccess: false,
-            lastError: ''
+            lastError: '',
+            sidePort: 0,
+            bt_state: BT_STATE.DISCONNECTED
         };
         this.read();
     }
 
     read() {
+        console.log('sRead');
         this.readItem(LOCAL_STORAGE.INFO);
         this.readItem(LOCAL_STORAGE.SETTINGS);
     }

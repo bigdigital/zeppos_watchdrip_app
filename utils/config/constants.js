@@ -44,6 +44,12 @@ export const GRAPH_LIMIT = 18;
 export const FETCH_SERVICE_ACTION = {
     START_SERVICE: 'start',
     UPDATE: 'update',
+    EXTEND: 'EXTEND',
+    STOP_SERVICE: 'stop'
+};
+
+export const ALARM_SERVICE_ACTION = {
+    START_SERVICE: 'start',
     STOP_SERVICE: 'stop'
 };
 

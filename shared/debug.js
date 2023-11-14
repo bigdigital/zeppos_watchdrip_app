@@ -3,6 +3,7 @@ import { zeroPad } from "./date";
 import {DEBUG_TEXT} from "../utils/config/styles";
 import { log } from "@zos/utils";
 import { Time } from "@zos/sensor";
+import {objToString} from "../utils/helper";
 
 //this helper allows to display logs on the screen
 //Also you can use bridge mode to show logs from the app (need to enable logs inside zepp app development menu)
@@ -32,7 +33,7 @@ export class DebugText {
     }
 
     log(text, logger = true) {
-        let formatted = DebugText.objToString(text);
+        let formatted = objToString(text);
         if (logger) {
             this.logger.log(formatted);
         }
@@ -64,39 +65,7 @@ export class DebugText {
         );
     }
 
-    static objToString(obj, ndeep) {
-        if (obj == null) {
-            return String(obj);
-        }
-        switch (typeof obj) {
-            case "string":
-                return obj;
-            case "function":
-                return obj.name || obj.toString();
-            case "object":
-                var indent = Array(ndeep || 1).join(" "),
-                    isArray = Array.isArray(obj);
-                return (
-                    "{["[+isArray] +
-                    Object.keys(obj)
-                        .map(function (key) {
-                            return (
-                                "\r\n " +
-                                indent +
-                                key +
-                                ": " +
-                                DebugText.objToString(obj[key], (ndeep || 1) + 1)
-                            );
-                        })
-                        .join(",") +
-                    "\r\n" +
-                    indent +
-                    "}]"[+isArray]
-                );
-            default:
-                return obj.toString();
-        }
-    }
+
 
     clean() {
         this.debugTextText = "";

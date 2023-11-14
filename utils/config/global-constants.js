@@ -2,6 +2,7 @@
  export const WF_INFO_FILE = WF_DIR + "/info.json";
 
 export const SERVICE_NAME = "app-service/fetch_service";
+export const ALARM_SERVICE_NAME = "app-service/alarm_service";
 
 export const WATCHDRIP_SETTINGS_DEFAULTS = {
     s_disableUpdates: false,

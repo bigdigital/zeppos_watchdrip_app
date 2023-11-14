@@ -744,12 +744,19 @@ class MessageBuilder extends EventBus {
 
   sendBinBySide(buf, debug = DEBUG) {
     // side 发送消息
+
     debug &&
-      logger$2.warn(
-        '[RAW] [S] send size=%d bin=%s',
-        buf.byteLength,
-        bin2hex(buf.buffer),
-      );
+    logger$2.warn(
+        '[Side] send size=%d ',
+        buf.byteLength
+    );
+
+    // debug &&
+    //   logger$2.warn(
+    //     '[RAW] [S] send size=%d bin=%s',
+    //     buf.byteLength,
+    //     bin2hex(buf.buffer),
+    //   );
     messaging.peerSocket.send(buf.buffer);
   }
 
@@ -1254,10 +1261,14 @@ class MessageBuilder extends EventBus {
         this.errorIfSideServiceDisconnect();
 
         logger$2.debug(
-            'traceId=>%d payload=>%s',
-            traceId,
-            payload.toString('hex'),
-          );
+            'transact traceId=>%d ',
+            traceId ,
+        );
+        // logger$2.debug(
+        //     'traceId=>%d payload=>%s',
+        //     traceId,
+        //     payload.toString('hex'),
+        //   );
 
         let result;
         switch (dataType) {

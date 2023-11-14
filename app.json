@@ -41,7 +41,8 @@
           "path": "app-side/index"
         },
         "app-event": {
-          "path": "app-service/fetch_service"
+          "path": "app-service/fetch_service",
+          "path": "app-service/alarm_service"
         }
       },
       "platforms": [
