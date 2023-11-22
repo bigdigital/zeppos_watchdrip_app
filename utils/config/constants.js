@@ -48,11 +48,6 @@ export const FETCH_SERVICE_ACTION = {
     STOP_SERVICE: 'stop'
 };
 
-export const ALARM_SERVICE_ACTION = {
-    START_SERVICE: 'start',
-    STOP_SERVICE: 'stop'
-};
-
 export const QUERY_PERMISSION_STATUS = {
     NOT_AUTHORIZED: 0,
     UNKNOWN_PERMISSION: 1,
