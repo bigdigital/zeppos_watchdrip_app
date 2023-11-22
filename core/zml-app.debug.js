@@ -1533,7 +1533,6 @@ function createDeviceMessage(appSidePort = 0) {
     appDevicePort,
     appSidePort,
   });
-
   return wrapperMessage(messageBuilder)
 }
 
