@@ -44,7 +44,7 @@ class WatchdripService {
     }
 
     onShakeResponse(data) {
-        logger.log('eventBus shake:response');
+        logger.log('eventBus shake:response port' + data.port2);
         if ( this.storage.info.bt_state !== BT_STATE.SHAKE ){
             logger.log('do not expect shake');
             return;
@@ -54,7 +54,10 @@ class WatchdripService {
 
         if (!this.storage.settings.s_useBGService){
             this.setRequestAlarm();
-            appServiceMgr.exit();
+            //**workaround** add timeout to properly save storage data
+            setTimeout(()=>{
+                appServiceMgr.exit();
+            }, 100)
         }
     }
 
