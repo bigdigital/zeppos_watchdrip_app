@@ -1101,7 +1101,7 @@ class MessageBuilder extends EventBus {
     const data = this.readBin(bin);
     this.emit('raw', bin);
 
-    logger$1.debug('received data');
+    logger$1.debug('watch received data');
     //logger$1.debug('received data=>', objToString(data));
     if (data.flag === MessageFlag.App && data.type === MessageType.Shake) {
       this.appSidePort = data.port2;
@@ -1247,7 +1247,6 @@ class MessageBuilder extends EventBus {
         this.errorIfBleDisconnect();
         this.errorIfSideServiceDisconnect();
 
-
         logger$1.debug(
             'transact traceId=>%d',
             traceId,
@@ -1273,11 +1272,14 @@ class MessageBuilder extends EventBus {
             result = payload;
             break
         }
+       // payload = null;
+        this.emit('data:result', result);
 
-        logger$1.debug('request id=>%d', requestId);
+        //logger$1.debug('request id=>%d', requestId);
         // logger$1.debug('request id=>%d payload=>%j', requestId, data);
         // logger$1.debug('response id=>%d payload=>%j', requestId, result);
         requestPromiseTask.resolve(result);
+
       };
 
       // this.on('response', transact)

@@ -13,6 +13,7 @@ export const BT_STATE = {
     SHAKE: 'SHAKE',
     SHAKE_DONE: 'SHAKE_DONE',
     REQUEST: 'REQUEST',
+    REQUEST_RECEIVED: 'REQUEST_R',
     IDLE: 'IDLE',
 };
 

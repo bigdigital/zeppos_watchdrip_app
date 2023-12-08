@@ -1,7 +1,7 @@
 import {log} from "@zos/utils";
 import * as appServiceMgr from "@zos/app-service";
 import {Time} from "@zos/sensor";
-import {Commands, DATA_TIMER_UPDATE_INTERVAL_MS, FETCH_SERVICE_ACTION} from "../utils/config/constants";
+import {Commands, FETCH_SERVICE_ACTION} from "../utils/config/constants";
 
 import {connectStatus} from '@zos/ble'
 import {BT_STATE, LOCAL_STORAGE, LocalInfoStorage} from "../utils/watchdrip/localInfoStorage";
@@ -14,8 +14,6 @@ import {BaseApp} from "../core/zml-app.debug";
 import {emitCustomSystemEvent} from "@zos/app";
 
 const logger = log.getLogger("fetch-service");
-
-
 /*
 typeof WatchdripService
 */
@@ -31,6 +29,7 @@ class WatchdripService {
         this.infoFile = new Path("full", WF_INFO_FILE);
         this.updatingData = false;
         this.contServiceStarted = false;
+        this.info = null;
         let _this = this;
 
         this.baseApp = BaseApp({
@@ -38,44 +37,79 @@ class WatchdripService {
             sidePort: this.storage.info.sidePort,
             onMessagingCreate() {
                 this.globalData.messaging.transport.on('shake:response', (data) => (_this.onShakeResponse(data)));
+                this.globalData.messaging.transport.on('data:result', (data) => (_this.onResult(data)));
+
                 messaging = this.globalData.messaging;
                 _this.onMsgInit();
             }
         });
     }
 
+    onResult(data) {
+        logger.log('eventBus data:result');
+        let {result: info = {}} = data;
+        //logger.log( objToString(info));
+        try {
+            if (info.error) {
+                logger.log("Error");
+                logger.log(info);
+                return;
+            }
+            this.saveInfo(info.result);
+            this.setBTState(BT_STATE.REQUEST_RECEIVED);
+        } catch (e) {
+            logger.log("error:" + e);
+        }
+        this.updatingData = false;
+        this.updateError();
+    }
+
+
+    updateError() {
+        if (this.storage.info.bt_state === BT_STATE.REQUEST_RECEIVED) {
+            this.resetError();
+        } else {
+            this.setError('status_start_watchdrip');
+        }
+        this.delayExit();
+    }
+
     onShakeResponse(data) {
         logger.log('eventBus shake:response port' + data.port2);
-        if ( this.storage.info.bt_state !== BT_STATE.SHAKE ){
+        if (this.storage.info.bt_state !== BT_STATE.SHAKE) {
             logger.log('do not expect shake');
             return;
         }
         this.storage.info.sidePort = data.port2;
         this.setBTState(BT_STATE.SHAKE_DONE)
 
-        if (!this.storage.settings.s_useBGService){
+        if (!this.storage.settings.s_useBGService) {
             this.setRequestAlarm();
-            //**workaround** add timeout to properly save storage data
-            setTimeout(()=>{
-                messaging.transport.ble.disConnect();
-                appServiceMgr.exit();
-            }, 100)
+            messaging.transport.ble.disConnect();
+            this.delayExit();
         }
     }
 
-    nextBTState(){
+    //**workaround** add timeout to properly save storage data
+    delayExit(timeout = 100) {
+        setTimeout(() => {
+            appServiceMgr.exit();
+        }, timeout);
+    }
+
+    nextBTState() {
         let arr = Object.values(BT_STATE);
         let index = arr.findIndex(x => x === this.storage.info.bt_state)
         index++;
 
-        if (index>=arr.length){
+        if (index >= arr.length) {
             console.log('end');
             return;
         }
         this.setBTState(arr[index]);
     }
 
-    setBTState(state){
+    setBTState(state) {
         console.log(`state ${state}`);
         this.storage.info.bt_state = state
         this.save();
@@ -83,7 +117,7 @@ class WatchdripService {
 
     onMsgInit() {
         logger.log(`onMsgInit sidePort: ${this.storage.info.sidePort} btState ${this.storage.info.bt_state}`);
-        if (this.storage.info.bt_state !== BT_STATE.SHAKE_DONE){
+        if (this.storage.info.bt_state !== BT_STATE.SHAKE_DONE) {
             this.setBTState(BT_STATE.SHAKE);
         }
     }
@@ -155,7 +189,7 @@ class WatchdripService {
         }
     }
 
-    setRequestAlarm(){
+    setRequestAlarm() {
         logger.log(`setRequestAlarm`);
         let param = JSON.stringify({
             action: FETCH_SERVICE_ACTION.UPDATE
@@ -165,7 +199,7 @@ class WatchdripService {
             param: param,
             delay: 5
         }
-         alarmMgr.set(option);
+        alarmMgr.set(option);
     }
 
     emitEvent(action, params = {}) {
@@ -200,19 +234,20 @@ class WatchdripService {
         if (!connectStatus()) {
             logger.log("No BT Connection");
             this.setError('status_no_bt');
+            this.save();
             return;
         }
 
-       logger.log(`bt_state  ${this.storage.info.bt_state}` );
-       switch (this.storage.info.bt_state){
-           case BT_STATE.SHAKE:
-               messaging.transport.fork(2000);
-               break;
-           case BT_STATE.SHAKE_DONE:
-               this.nextBTState();
-               this.requestInfo();
-               break;
-       }
+        logger.log(`bt_state  ${this.storage.info.bt_state}`);
+        switch (this.storage.info.bt_state) {
+            case BT_STATE.SHAKE:
+                messaging.transport.fork(2000);
+                break;
+            case BT_STATE.SHAKE_DONE:
+                this.nextBTState();
+                this.requestInfo();
+                break;
+        }
     }
 
     requestInfo() {
@@ -225,44 +260,18 @@ class WatchdripService {
         messaging.request({
             method: Commands.getInfo,
             params: params,
-        }, {timeout: 3000})
-            .then((data) => {
-                logger.log("received data");
-                let {result: info = {}} = data;
-                //logger.log(info);
-                try {
-                    if (info.error) {
-                        logger.log("Error");
-                        logger.log(info);
-                        return;
-                    }
-                    this.saveInfo(info);
-                    info = null;
-                } catch (e) {
-                    logger.log("error:" + e);
-                }
-            })
+        }, {timeout: 2000})
             .catch((error) => {
                 logger.log("fetch error:" + error);
-            })
-            .finally(() => {
-                logger.log("lastUpdSuccess:" + this.storage.info.lastUpdSuccess);
                 this.updatingData = false;
-                this.nextBTState();
-                if (!this.storage.info.lastUpdSuccess) {
-                    this.setError('status_start_watchdrip');
-                } else {
-                    this.resetError();
-                }
-                this.dropConnection();
+                this.updateError();
             });
     }
 
     setError(error) {
         this.storage.info.lastError = error;
-        this.save();
+        //this.save();
     }
-
 
     resetError() {
         if (this.storage.info.lastError) {
@@ -278,6 +287,7 @@ class WatchdripService {
 
     saveInfo(info) {
         logger.log("saveInfo");
+        //logger.log(info);
         this.infoFile.overrideWithText(info);
         this.storage.info.lastUpd = getTimestamp();
         this.storage.info.lastUpdSuccess = true;
@@ -295,20 +305,18 @@ class WatchdripService {
         appServiceMgr.exit();
     }
 
-    onDestroy() {
-        //this.dropConnection();
-        if (!this.storage.info.lastUpdSuccess && this.storage.info.bt_state === BT_STATE.REQUEST) {
+    destroy() {
+        if (this.storage.info.bt_state !== BT_STATE.SHAKE_DONE) {
+            this.dropConnection();
+        }
+        if (!this.storage.info.lastUpdSuccess &&
+            (this.storage.info.bt_state === BT_STATE.REQUEST)) {
             logger.log(`FAIL UPDATE`);
         }
-        if (this.storage.info.bt_state === BT_STATE.REQUEST){
-            this.dropConnection();
-        }
-        else if ( this.storage.info.bt_state === BT_STATE.SHAKE){
-            this.dropConnection();
-        }
-
+        /*this.info = null;
+        this.storage.info = null;
         this.storage = null;
-        this.infoFile = null;
+        this.infoFile = null;*/
     }
 
     save() {
@@ -316,7 +324,7 @@ class WatchdripService {
     }
 }
 
-function  getTime() {
+function getTime() {
     return (
         zeroPad(timeSensor.getHours()) +
         ":" +
@@ -359,7 +367,8 @@ AppService({
     onDestroy() {
         logger.log(`service on destroy invoke ${getTime()}`);
         if (service) {
-            service.onDestroy();
+            service.destroy();
+            //service = null;
         }
     }
 });
