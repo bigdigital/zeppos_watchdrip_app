@@ -4,7 +4,7 @@ import {SERVICE_NAME, WF_DIR, WF_INFO_FILE} from "../utils/config/global-constan
 import * as style from "../utils/config/styles";
 import {Path} from "../utils/path";
 import {log} from "@zos/utils";
-import * as appService from "@zos/app-service";
+import * as appServiceMgr from "@zos/app-service";
 import * as alarmMgr from "@zos/alarm";
 import {emitCustomSystemEvent, getPackageInfo, queryPermission, requestPermission} from "@zos/app";
 
@@ -14,12 +14,10 @@ import * as nav from "../shared/navigate";
 import * as hmUI from "@zos/ui";
 import {
     Colors,
-    DATA_STALE_TIME_MS,
-    DATA_TIMER_UPDATE_INTERVAL_MS, DATA_UPDATE_INTERVAL_MS,
-    FETCH_SERVICE_ACTION,
-    XDRIP_UPDATE_INTERVAL_MS
+    DATA_TIMER_UPDATE_INTERVAL_MS,
+    DATA_UPDATE_INTERVAL_MS,
+    FETCH_SERVICE_ACTION
 } from "../utils/config/constants";
-import {LOCAL_STORAGE, LocalInfoStorage} from "../utils/watchdrip/localInfoStorage";
 import {WatchdripData} from "../utils/watchdrip/watchdrip-data";
 
 import {getDataTypeConfig, getTimestamp, img} from "../utils/helper";
@@ -41,7 +39,10 @@ const PagesType = {
     ADD_TREATMENT: 'add_treatment'
 };
 
-let {localStorage} = getApp()._options.globalData;
+
+let {/**@type {InfoStorage} */ config,
+    /** @type {InfoStorage} */ info
+} = getApp()._options.globalData;
 
 class Watchdrip {
     constructor() {
@@ -50,9 +51,9 @@ class Watchdrip {
         this.serviceRunning = false;
         this.intervalTimer = null;
         this.updateIntervals = DATA_UPDATE_INTERVAL_MS;
-        this.storage = new LocalInfoStorage(localStorage);
-        debug.setEnabled(this.storage.settings.s_showLog);
-        debug.log(this.storage);
+        debug.setEnabled(config.data.s_showLog);
+        //debug.log(config.data);
+        //debug.log(info.data);
     }
 
     start(data) {
@@ -131,7 +132,7 @@ class Watchdrip {
         //     },
         // });
 
-        if (this.storage.settings.s_disableUpdates) {
+        if (config.data.s_disableUpdates) {
             this.showMessage(getText("data_upd_disabled"));
         } else {
             this.showMessage(getText("connecting"));
@@ -146,8 +147,8 @@ class Watchdrip {
                 item_click_func: (list, index) => {
                     debug.log(index);
                     const key = this.configDataList[index].key
-                    let val = this.storage.settings[key]
-                    this.storage.settings[key] = !val;
+                    let val = config.data[key]
+                    config.data[key] = !val;
                     //update list
                     this.configScrollList.setProperty(hmUI.prop.UPDATE_DATA, {
                         ...this.getConfigData(),
@@ -178,6 +179,7 @@ class Watchdrip {
         this.updateValuesWidget()
         this.updateTimesWidget()
     }
+
     updateValuesWidget() {
         let bgValColor = Colors.white;
         let bgObj = this.watchdripData.getBg();
@@ -208,13 +210,13 @@ class Watchdrip {
         });
     }
 
-     startDataUpdates() {
-         if (this.intervalTimer != null) return; //already started
-         debug.log("startDataUpdates");
-         this.intervalTimer = setInterval(() => {
-             this.checkUpdates();
-         }, DATA_TIMER_UPDATE_INTERVAL_MS);
-     }
+    startDataUpdates() {
+        if (this.intervalTimer != null) return; //already started
+        debug.log("startDataUpdates");
+        this.intervalTimer = setInterval(() => {
+            this.checkUpdates();
+        }, DATA_TIMER_UPDATE_INTERVAL_MS);
+    }
 
 
     stopDataUpdates() {
@@ -227,11 +229,11 @@ class Watchdrip {
 
     readLastUpdate() {
         debug.log("readLastUpdate");
-        this.storage.readItem(LOCAL_STORAGE.INFO);
-        this.lastUpdateAttempt = this.storage.info.lastUpdAttempt;
-        this.lastUpdateSucessful = this.storage.info.lastUpdSuccess;
+        info.read();
+        this.lastUpdateAttempt = info.data.lastUpdAttempt;
+        this.lastUpdateSucessful = info.data.lastUpdSuccess;
 
-        return this.storage.info.lastUpd;
+        return info.data.lastUpd;
     }
 
     checkUpdates() {
@@ -239,8 +241,8 @@ class Watchdrip {
         this.updateTimesWidget();
         let lastInfoUpdate = this.readLastUpdate();
 
-        if (this.storage.info.lastError){
-            this.showMessage(getText(this.storage.info.lastError));
+        if (info.data.lastError) {
+            this.showMessage(getText(info.data.lastError));
         }
         if (this.lastUpdateSucessful) {
             if (this.lastInfoUpdate !== lastInfoUpdate) {
@@ -296,7 +298,7 @@ class Watchdrip {
     getConfigData() {
         let dataList = [];
 
-        Object.entries(this.storage.settings).forEach(entry => {
+        Object.entries(config.data).forEach(entry => {
             const [key, value] = entry;
             let stateImg = style.RADIO_OFF
             if (value) {
@@ -328,35 +330,32 @@ class Watchdrip {
     initFetchService() {
         this.serviceRunning = this.isServiceRunning();
         debug.log("service running " + this.serviceRunning);
-        if (this.storage.settings.s_disableUpdates ){
+        if (config.data.s_disableUpdates) {
             if (this.serviceRunning) {
                 this.emitEvent(FETCH_SERVICE_ACTION.STOP_SERVICE);
+            }
+            let alarmId = this.getAlarmId();
+            if (alarmId) {
+                logger.log(`remove alarm id ${alarmId}`);
+                alarmMgr.cancel(alarmId);
             }
             return;
         }
-        if (this.storage.settings.s_useBGService) {
-            if (!this.serviceRunning) {
-                this.permissionRequest();
-            }
-        } else {
-            if (this.serviceRunning) {
-                this.emitEvent(FETCH_SERVICE_ACTION.STOP_SERVICE);
-            }
-            if (!this.getAlarmId()) {
-                this.emitEvent(FETCH_SERVICE_ACTION.START_SERVICE);
-            }
+        if (!this.serviceRunning) {
+            this.permissionRequest();
         }
     }
 
-    isServiceRunning(){
-        let services = appService.getAllAppServices();
+
+    isServiceRunning() {
+        let services = appServiceMgr.getAllAppServices();
         return services.includes(SERVICE_NAME);
     }
 
     getAlarmId() {
         let alarms = alarmMgr.getAllAlarms();
         if (alarms.length) {
-            debug.log("getAlarmId " +alarms[0]);
+            debug.log("getAlarmId " + alarms[0]);
             return alarms[0];
         }
         return 0;
@@ -373,12 +372,12 @@ class Watchdrip {
             debug.log('requestPermission');
             requestPermission({
                 permissions: permissions,
-                callback:(result) =>{
+                callback: (result) => {
                     debug.log('callback ret: ' + result);
                     if (result === 2) {
                         this.startFetchService();
                     } else {
-                        hmUI.showToast({text: `Service could not be started, activate manually`});
+                        this.showMessage(`Service could not be started, activate manually`)
                     }
                 },
             });
@@ -389,14 +388,14 @@ class Watchdrip {
 
     startFetchService() {
         debug.log(`=== start service: ${SERVICE_NAME} ===`);
-        const result = appService.start({
+        const result = appServiceMgr.start({
             url: SERVICE_NAME,
             param: JSON.stringify({
                 action: FETCH_SERVICE_ACTION.START_SERVICE
             }),
             complete_func: (info) => {
                 debug.log(`startService result: ` + JSON.stringify(info));
-                if (info.result) {
+                if (info.data.result) {
                     this.serviceRunning = true;
                     hmUI.showToast({text: `Service started`});
                 }
@@ -433,7 +432,7 @@ class Watchdrip {
 
                 break;
             case PagesType.CONFIG:
-                this.storage.saveItem(LOCAL_STORAGE.SETTINGS);
+                config.save();
                 break;
             case PagesType.ADD_TREATMENT:
                 break;

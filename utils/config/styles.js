@@ -4,6 +4,7 @@ import * as hmUI from "@zos/ui";
 import {DEVICE_HEIGHT, DEVICE_WIDTH, DEVICE_SHAPE} from "./device";
 
 import {Colors} from "./constants";
+import {px} from "@zos/utils";
 
 export const DEVICE_TYPE = DEVICE_SHAPE ? 'round' : 'square'
 
