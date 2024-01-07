@@ -40,11 +40,21 @@ export const TEST_DATA = false;
 export const MMOLL_TO_MGDL = 18.0182;
 export const GRAPH_LIMIT = 18;
 
+export const PagesType = {
+    MAIN: 'main',
+    CONFIG: 'config',
+    ADD_TREATMENT: 'add_treatment'
+};
 
 export const FETCH_SERVICE_ACTION = {
-    START_SERVICE: 'start',
+    START: 'start',
     UPDATE: 'update',
-    STOP_SERVICE: 'stop'
+    STOP: 'stop',
+    UNKNOWN: 'unknown'
+};
+
+export const ALARM_SERVICE_ACTION = {
+    UPDATE: 'update',
 };
 
 export const QUERY_PERMISSION_STATUS = {

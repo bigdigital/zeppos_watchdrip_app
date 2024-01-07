@@ -27,7 +27,7 @@ export function gotoSubpage(page, params, appid) {
         })
     }
     if (appid) {
-        obj = {...obj, ...{appid: appid}}
+        obj = {...obj, appid: appid}
         launchApp(obj)
     } else {
         push(obj);

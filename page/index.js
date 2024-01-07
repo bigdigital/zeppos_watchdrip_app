@@ -16,7 +16,8 @@ import {
     Colors,
     DATA_TIMER_UPDATE_INTERVAL_MS,
     DATA_UPDATE_INTERVAL_MS,
-    FETCH_SERVICE_ACTION
+    FETCH_SERVICE_ACTION,
+    PagesType
 } from "../utils/config/constants";
 import {WatchdripData} from "../utils/watchdrip/watchdrip-data";
 
@@ -32,12 +33,6 @@ let debug = null;
 typeof Watchdrip
 */
 let watchdrip = null;
-
-const PagesType = {
-    MAIN: 'main',
-    CONFIG: 'config',
-    ADD_TREATMENT: 'add_treatment'
-};
 
 
 let {/**@type {InfoStorage} */ config,
@@ -162,6 +157,7 @@ class Watchdrip {
 
     readInfo() {
         let data = this.infoFile.fetchJSON();
+        // debug.log(data)
         if (data) {
             debug.log("data was read");
             this.watchdripData.setData(data);
@@ -328,24 +324,20 @@ class Watchdrip {
     }
 
     initFetchService() {
-        this.serviceRunning = this.isServiceRunning();
-        debug.log("service running " + this.serviceRunning);
+        let serviceRunning = this.isServiceRunning();
         if (config.data.s_disableUpdates) {
-            if (this.serviceRunning) {
-                this.emitEvent(FETCH_SERVICE_ACTION.STOP_SERVICE);
-            }
-            let alarmId = this.getAlarmId();
-            if (alarmId) {
-                logger.log(`remove alarm id ${alarmId}`);
-                alarmMgr.cancel(alarmId);
+            if (serviceRunning) {
+                this.emitEvent(FETCH_SERVICE_ACTION.STOP);
             }
             return;
         }
-        if (!this.serviceRunning) {
+        if (serviceRunning){
+            this.emitEvent(FETCH_SERVICE_ACTION.UPDATE);
+        }
+        else {
             this.permissionRequest();
         }
     }
-
 
     isServiceRunning() {
         let services = appServiceMgr.getAllAppServices();
@@ -365,7 +357,6 @@ class Watchdrip {
         // Start time report service
         debug.log('permissionRequest');
         const permissions = ["device:os.bg_service"];
-
         let [result] = queryPermission({permissions: permissions});
 
         if (result === 0) {
@@ -375,35 +366,31 @@ class Watchdrip {
                 callback: (result) => {
                     debug.log('callback ret: ' + result);
                     if (result === 2) {
-                        this.startFetchService();
+                        this.fetchServiceStart();
                     } else {
                         this.showMessage(`Service could not be started, activate manually`)
                     }
                 },
             });
         } else if (result === 2) {
-            this.startFetchService();
+            this.fetchServiceStart();
         }
     }
 
-    startFetchService() {
-        debug.log(`=== start service: ${SERVICE_NAME} ===`);
+    fetchServiceStart() {
+        logger.log(`=== start service: ${SERVICE_NAME} ===`);
         const result = appServiceMgr.start({
             url: SERVICE_NAME,
             param: JSON.stringify({
-                action: FETCH_SERVICE_ACTION.START_SERVICE
+                action: FETCH_SERVICE_ACTION.START
             }),
             complete_func: (info) => {
-                debug.log(`startService result: ` + JSON.stringify(info));
-                if (info.data.result) {
-                    this.serviceRunning = true;
-                    hmUI.showToast({text: `Service started`});
-                }
+                logger.log(`startService result: ` + JSON.stringify(info));
             },
         });
 
         if (result) {
-            debug.log("startService result: ", result);
+            logger.log("startService result: ", result);
         }
     }
 

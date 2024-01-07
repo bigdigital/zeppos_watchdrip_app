@@ -35,7 +35,7 @@
           "pages": ["page/index"]
         },
         "app-service": {
-          "services": ["app-service/fetch_service"]
+          "services": ["app-service/fetch_service","app-service/alarm_service"]
         },
         "app-side": {
           "path": "app-side/index"

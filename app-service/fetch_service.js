@@ -1,11 +1,11 @@
 import {log} from "@zos/utils";
 import * as appServiceMgr from "@zos/app-service";
 import {Time} from "@zos/sensor";
-import {Commands, FETCH_SERVICE_ACTION} from "../utils/config/constants";
+import {ALARM_SERVICE_ACTION, Commands, FETCH_SERVICE_ACTION} from "../utils/config/constants";
 
 import {connectStatus} from '@zos/ble'
 import * as alarmMgr from '@zos/alarm'
-import {GRAPH_FETCH_PARAM, SERVICE_NAME, WF_INFO_FILE} from "../utils/config/global-constants";
+import {ALARM_SERVICE_NAME, GRAPH_FETCH_PARAM, SERVICE_NAME, WF_INFO_FILE} from "../utils/config/global-constants";
 import {Path} from "../utils/path";
 import {zeroPad} from "../shared/date";
 import {getTimestamp, objToString} from "../utils/helper";
@@ -23,7 +23,7 @@ let {/**@type {InfoStorage} */ config,
     /** @type {InfoStorage} */ info
 } = getApp()._options.globalData;
 
-/** @type {MessageBuilder} */ let messaging;
+/** @type {MessageBuilder} */ let messaging = null;
 
 let timeSensor = new Time();
 
@@ -48,13 +48,7 @@ class WatchdripService {
         } else {
             this.setError('status_start_watchdrip');
         }
-        this.delayExit();
     }
-
-    // this.setRequestAlarm();
-    // messaging.transport.ble.disConnect();
-    // this.delayExit();
-
 
     //**workaround** add timeout to properly save storage data
     delayExit(timeout = 100) {
@@ -65,34 +59,36 @@ class WatchdripService {
 
     dropConnection() {
         logger.log("dropConnection");
-        this.baseApp.onDestroy();
+        if (messaging) {
+            this.baseApp.onDestroy();
+        }
     }
 
     init(data) {
         logger.log(`init ${data.action}`);
         switch (data.action) {
-            case FETCH_SERVICE_ACTION.START_SERVICE:
-                this.prepare();
+            case FETCH_SERVICE_ACTION.START:
+                this.prepareAlarmService();
                 this.fetchInfo();
                 break;
             case FETCH_SERVICE_ACTION.UPDATE:
                 this.fetchInfo();
                 break;
-            case FETCH_SERVICE_ACTION.STOP_SERVICE:
+            case FETCH_SERVICE_ACTION.STOP:
                 this.stopService();
                 break;
         }
     }
 
-    prepare() {
+    prepareAlarmService() {
         logger.log("prepare");
         let alarmId = this.getAlarmId();
         if (!alarmId) {
             let param = JSON.stringify({
-                action: FETCH_SERVICE_ACTION.UPDATE
+                action: ALARM_SERVICE_ACTION.UPDATE
             });
             const option = {
-                url: SERVICE_NAME,
+                url: ALARM_SERVICE_NAME,
                 param: param,
                 store: true,
                 delay: 0,
@@ -110,45 +106,6 @@ class WatchdripService {
         } else {
             logger.log(`alarmAlreadyActive id ${alarmId}`);
         }
-
-        /*
-
-                timeSensor.onPerMinute(() => {
-                    logger.log("onPerMinute");
-                    this.updatingData = false;
-                    config.read();
-                    this.fetchInfo();
-                }); */
-    }
-
-    startFetchService() {
-        logger.log(`=== start service: ${SERVICE_NAME} ===`);
-        const result = appServiceMgr.start({
-            url: SERVICE_NAME,
-            param: JSON.stringify({
-                action: FETCH_SERVICE_ACTION.START_SERVICE
-            }),
-            complete_func: (info) => {
-                logger.log(`startService result: ` + JSON.stringify(info));
-            },
-        });
-
-        if (result) {
-            logger.log("startService result: ", result);
-        }
-    }
-
-    setRequestAlarm() {
-        logger.log(`setRequestAlarm`);
-        let param = JSON.stringify({
-            action: FETCH_SERVICE_ACTION.UPDATE
-        });
-        const option = {
-            url: SERVICE_NAME,
-            param: param,
-            delay: 5
-        }
-        alarmMgr.set(option);
     }
 
     getAlarmId() {
@@ -157,6 +114,19 @@ class WatchdripService {
             return alarms[0];
         }
         return 0;
+    }
+
+    setNextFetchAlarm() {
+        logger.log(`setNextFetchAlarm`);
+        let param = JSON.stringify({
+            action: FETCH_SERVICE_ACTION.UPDATE
+        });
+        const option = {
+            url: SERVICE_NAME,
+            param: param,
+            delay: 60
+        }
+        alarmMgr.set(option);
     }
 
     fetchInfo() {
@@ -194,20 +164,21 @@ class WatchdripService {
                         logger.log(info);
                         return;
                     }
-                    this.saveInfo(info.result);
+                    this.saveInfo(info);
                 } catch (e) {
                     logger.log("error:" + e);
                 }
-
             })
             .catch((error) => {
                 logger.log("fetch error:" + error);
             })
             .finally(() => {
                 this.updatingData = false;
-                this.updateError();
                 this.dropConnection();
-        });
+                this.updateError();
+                this.save();
+                this.setNextFetchAlarm();
+            });
     }
 
 
@@ -228,10 +199,10 @@ class WatchdripService {
         info.data.lastUpdSuccess = false;
     }
 
-    saveInfo(info) {
+    saveInfo(data) {
         logger.log("saveInfo");
         //logger.log(info);
-        this.infoFile.overrideWithText(info);
+        this.infoFile.overrideWithText(data);
         info.data.lastUpd = getTimestamp();
         info.data.lastUpdSuccess = true;
         //this.save();
@@ -275,7 +246,7 @@ function getTime() {
 function handle(p) {
     try {
         logger.log(`handle`);
-        let data = {action: FETCH_SERVICE_ACTION.START_SERVICE};
+        let data = {action: FETCH_SERVICE_ACTION.UNKNOWN};
         try {
             if (!(!p || p === 'undefined')) {
                 data = JSON.parse(p);
