@@ -1,49 +1,63 @@
 import {log} from "@zos/utils";
 import * as appServiceMgr from "@zos/app-service";
 import {Time} from "@zos/sensor";
-import {ALARM_SERVICE_ACTION, Commands, FETCH_SERVICE_ACTION} from "../utils/config/constants";
+import {ALARM_SERVICE_ACTION, Commands, FETCH_SERVICE_ACTION, FETCH_STALE} from "../utils/config/constants";
 
 import {connectStatus} from '@zos/ble'
 import * as alarmMgr from '@zos/alarm'
-import {ALARM_SERVICE_NAME, GRAPH_FETCH_PARAM, SERVICE_NAME, WF_INFO_FILE} from "../utils/config/global-constants";
+import {
+    ALARM_SERVICE_NAME,
+    FETCH_SERVICE_NAME,
+    GRAPH_FETCH_PARAM,
+    WATCHDRIP_INFO_DEFAULTS,
+    WATCHDRIP_SETTINGS_DEFAULTS,
+    WF_CONFIG_FILE,
+    WF_INFO_FILE,
+    WF_STATUS_FILE
+} from "../utils/config/global-constants";
 import {Path} from "../utils/path";
 import {zeroPad} from "../shared/date";
-import {getTimestamp, objToString} from "../utils/helper";
-import {BaseApp} from "../core/zml-app.debug";
+import {getTimestamp, isTimeout, objToString} from "../utils/helper";
+import {BaseApp} from "../core/zml-app";
+import {BasePage} from "../core/zml-page";
+import {InfoStorage} from "../utils/watchdrip/infoStorage";
+
 
 const logger = log.getLogger("fetch-service");
-
 
 /*
 typeof WatchdripService
 */
 let service = null;
 
-let {/**@type {InfoStorage} */ config,
-    /** @type {InfoStorage} */ info
-} = getApp()._options.globalData;
 
-/** @type {MessageBuilder} */ let messaging = null;
 
 let timeSensor = new Time();
 
+
+
 class WatchdripService {
+
+
     constructor() {
+        this.counter = 0;
         this.infoFile = new Path("full", WF_INFO_FILE);
         this.updatingData = false;
 
-        this.baseApp = BaseApp({
-            globalData: getApp()._options.globalData,
-            sidePort: 0,
-            onMessagingCreate() {
-                messaging = this.globalData.messaging;
-            }
-        });
+        this.configStorage = new InfoStorage(
+            new Path("full", WF_CONFIG_FILE),
+            WATCHDRIP_SETTINGS_DEFAULTS
+        );
+
+        this.statusStorage = new InfoStorage(
+            new Path("full", WF_STATUS_FILE),
+            WATCHDRIP_INFO_DEFAULTS
+        );
     }
 
 
     updateError() {
-        if (info.data.lastUpdSuccess) {
+        if (this.statusStorage.data.lastUpdSuccess) {
             this.resetError();
         } else {
             this.setError('status_start_watchdrip');
@@ -59,25 +73,41 @@ class WatchdripService {
 
     dropConnection() {
         logger.log("dropConnection");
-        if (messaging) {
+        if (this.basePage) {
+            this.basePage.onDestroy();
+        }
+        if (this.baseApp) {
             this.baseApp.onDestroy();
         }
+        this.updatingData = false;
     }
 
     init(data) {
         logger.log(`init ${data.action}`);
+        //this.testReadWrite();
         switch (data.action) {
             case FETCH_SERVICE_ACTION.START:
-                this.prepareAlarmService();
-                this.fetchInfo();
+              //  this.prepareAlarmService();
+                this.prepareFetchInfo();
                 break;
             case FETCH_SERVICE_ACTION.UPDATE:
-                this.fetchInfo();
+                this.prepareFetchInfo();
                 break;
             case FETCH_SERVICE_ACTION.STOP:
                 this.stopService();
                 break;
         }
+    }
+
+
+    testReadWrite(){
+        this.statusStorage.read();
+
+        console.log(objToString(this.statusStorage.data));
+
+        this.counter++
+        this.statusStorage.data["run"] = this.counter;
+        this.statusStorage.save();
     }
 
     prepareAlarmService() {
@@ -116,28 +146,72 @@ class WatchdripService {
         return 0;
     }
 
-    setNextFetchAlarm() {
+    setNextFetchAlarm(delay) {
         logger.log(`setNextFetchAlarm`);
         let param = JSON.stringify({
             action: FETCH_SERVICE_ACTION.UPDATE
         });
         const option = {
-            url: SERVICE_NAME,
+            url: FETCH_SERVICE_NAME,
             param: param,
-            delay: 60
+            delay: delay
         }
-        alarmMgr.set(option);
+        let newAlarmId = alarmMgr.set(option);
+        if (newAlarmId) {
+            logger.log(`Next runAlarm id ${newAlarmId}`);
+        } else {
+            logger.log('!!!cannot create  Next ALARM');
+        }
     }
 
-    fetchInfo() {
-        this.baseApp.onCreate();
-        logger.log("fetchInfo");
+    prepareFetchInfo() {
+        logger.log("prepareFetchInfo");
         if (this.updatingData) {
+            if (isTimeout(this.statusStorage.data.lastUpdAttempt, FETCH_STALE)) {
+                this.dropConnection();
+                this.setNextFetchAlarm(60);
+                logger.log("restart fetch, return");
+                return;
+            }
+
+
             logger.log("updatingData, return");
             return;
         }
 
+        if (!this.basePage) {
+            logger.log("messaging create");
+            let _self = this;
+            this.baseApp = BaseApp({
+                onCreate() {
+                    logger.log('BaseApp on create invoke')
+                    getApp()._options.globalData.messaging = this.globalData.messaging;
+                    _self.basePage = BasePage();
+                    _self.basePage.onInit();
+                    _self.fetchInfo();
+                },
+                onDestroy() {
+                    logger.log('BaseApp on destroy invoke')
+                },
+            });
+            this.baseApp.onCreate()
+        }
+        else {
+            this.fetchInfo();
+        }
+
+
+    }
+
+    fetchInfo() {
+        logger.log("fetchInfo");
+
         this.resetLastUpdate();
+        this.save();
+        if (!this.basePage) {
+            console.log("messaging = NULL!  return");
+            return;
+        }
 
         if (!connectStatus()) {
             logger.log("No BT Connection");
@@ -146,12 +220,14 @@ class WatchdripService {
             return;
         }
         this.updatingData = true;
-        console.log('fetchInfo');
         let params = '';
-        if (config.data.s_graphInfo) {
+        this.configStorage.read();
+        if (this.configStorage.data.s_graphInfo) {
             params = GRAPH_FETCH_PARAM;
         }
-        messaging.request({
+        logger.log("request");
+
+        this.basePage.request({
             method: Commands.getInfo,
             params: params,
         }, {timeout: 2000}).then(
@@ -174,37 +250,42 @@ class WatchdripService {
             })
             .finally(() => {
                 this.updatingData = false;
-                this.dropConnection();
                 this.updateError();
                 this.save();
-                this.setNextFetchAlarm();
+                this.setNextFetchAlarm(60);
+
+                if (!this.statusStorage.data.lastUpdSuccess) {
+                    logger.log(`FAIL UPDATE`);
+                }
+                // this.delayExit();
             });
     }
 
 
+
     setError(error) {
-        info.data.lastError = error;
+        this.statusStorage.data.lastError = error;
         //this.save();
     }
 
     resetError() {
-        if (info.data.lastError) {
+        if (this.statusStorage.data.lastError) {
             this.setError('');
         }
     }
 
     resetLastUpdate() {
         //logger.log("resetLastUpdate");
-        info.data.lastUpdAttempt = getTimestamp();
-        info.data.lastUpdSuccess = false;
+        this.statusStorage.data.lastUpdAttempt = getTimestamp();
+        this.statusStorage.data.lastUpdSuccess = false;
     }
 
     saveInfo(data) {
         logger.log("saveInfo");
-        //logger.log(info);
+        //logger.log(data);
         this.infoFile.overrideWithText(data);
-        info.data.lastUpd = getTimestamp();
-        info.data.lastUpdSuccess = true;
+        this.statusStorage.data.lastUpd = getTimestamp();
+        this.statusStorage.data.lastUpdSuccess = true;
         //this.save();
     }
 
@@ -221,13 +302,10 @@ class WatchdripService {
 
     destroy() {
         this.dropConnection();
-        if (!info.data.lastUpdSuccess) {
-            logger.log(`FAIL UPDATE`);
-        }
     }
 
     save() {
-        info.save();
+        this.statusStorage.save();
     }
 }
 
@@ -254,7 +332,9 @@ function handle(p) {
         } catch (e) {
             data = {action: p}
         }
-        service = new WatchdripService()
+        if (service == null) {
+            service = new WatchdripService()
+        }
         service.init(data);
     } catch (e) {
         logger.log('LifeCycle Error ' + e)

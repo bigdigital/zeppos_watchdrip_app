@@ -1,5 +1,5 @@
 import {Commands, SERVER_INFO_URL, SERVER_URL,} from "../utils/config/constants";
-import {BaseSideService} from "../core/zml-side.debug";
+import {BaseSideService} from "../core/zml-side";
 
 const fetchInfo = async (res, url) => {
     let resp = {};
@@ -38,11 +38,9 @@ const fetchInfo = async (res, url) => {
 
 AppSideService(
     BaseSideService({
-        state: {},
         onInit() {
         },
         onRequest(req, res) {
-
             console.log("log", req);
 
             let url = SERVER_URL;

@@ -8,6 +8,7 @@ export const isMiBand7 = deviceID === "Xiaomi Smart Band 7";
 
 export class Path {
     constructor(scope, path) {
+        let patchOrig = path;
         if (path[0] != "/") path = "/" + path;
 
         this.scope = scope;
@@ -17,7 +18,7 @@ export class Path {
             this.relativePath = path;
             this.absolutePath = FsTools.fullAssetPath(path);
         } else if (scope === "data") {
-            this.relativePath = path;
+            this.relativePath = "data://" + patchOrig;
             this.absolutePath = FsTools.fullDataPath(path);
         } else if (scope === "full") {
             this.relativePath = `../../../${path.substring(9)}`;
@@ -106,8 +107,9 @@ export class Path {
 
     fetch(limit = Infinity) {
         const st = this.stat();
-        if (!st) return null;
-
+        if (!st) {
+            return null;
+        }
         const length = Math.min(limit, st.size);
         const buffer = new ArrayBuffer(st.size);
         this.open(hmFS.O_RDONLY);
@@ -140,7 +142,7 @@ export class Path {
     }
 
     overrideWithText(text) {
-        //console.log(text);
+        console.log(text);
         return this.override(FsTools.str2ab(text));
     }
 
@@ -174,7 +176,7 @@ export class Path {
     }
 
     write(buffer, offset, length) {
-        console.log("write" + this.path);
+        console.log("write " + this.path);
         hmFS.writeSync({fd: this._f, buffer: buffer, options: {offset: offset, length: length}})
     }
 

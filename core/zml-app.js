@@ -1,7 +1,94 @@
-import {objToString} from "../utils/helper";
+const hasOwnProperty = Object.prototype.hasOwnProperty;
+
+function merge(dest, src) {
+  Object.getOwnPropertyNames(src).forEach(
+    function forEachOwnPropertyName(name) {
+      if (hasOwnProperty.call(dest, name)) {
+        return
+      }
+
+      var descriptor = Object.getOwnPropertyDescriptor(src, name);
+      Object.defineProperty(dest, name, descriptor);
+    },
+  );
+
+  return dest
+}
+
+const pluginService = {
+  init() {
+    this.plugins = [];
+    this.settings = {};
+    this.mixins = [];
+  },
+  set(setting, val) {
+    if (arguments.length === 1) {
+      return this.settings[setting]
+    }
+
+    this.settings[setting] = val;
+  },
+  use(plugin, ...args) {
+    if (typeof plugin === 'function') {
+      this.plugins.push({
+        handler: plugin,
+        args,
+      });
+    } else if (typeof plugin === 'object') {
+      this.mixins.push({
+        handler: plugin,
+        args: [],
+      });
+    }
+    return this
+  },
+  handle(instance) {
+    this.plugins.forEach((p) => {
+      if (!p) return
+      if (typeof p.handler === 'function') {
+        const result = p.handler.call(this, instance, ...p.args);
+
+        if (typeof result === 'object') {
+          this.mixins.push({
+            handler: result,
+            args: [],
+          });
+        }
+      }
+    });
+
+    this.mixins.forEach(
+      ({
+        handler: {
+          onInit,
+          onPause,
+          build,
+          onResume,
+          onDestroy,
+          onCreate,
+          ...methods
+        },
+        args,
+      }) => {
+        Object.assign(instance, methods);
+      },
+    );
+  },
+};
+
+let buffer = Buffer;
 
 function isHmAppDefined() {
   return typeof hmApp !== 'undefined'
+}
+
+function isPlainObject(item) {
+  return (
+    typeof item === 'object' &&
+    !buffer.isBuffer(item) &&
+    !Array.isArray(item) &&
+    item !== null
+  )
 }
 
 let _r = null;
@@ -11,7 +98,6 @@ if (typeof __$$R$$__ !== 'undefined') {
 } else {
   _r = () => {};
 }
-
 
 let getPackageInfo = null;
 
@@ -84,7 +170,6 @@ function isSideService() {
 
 let logger$2 = null;
 
-
 if (isZeppOS1()) {
   // zeppos 1.0
   logger$2 = DeviceRuntimeCore.HmLogger;
@@ -98,17 +183,121 @@ if (isZeppOS1()) {
   }
 }
 
+function loggerPlugin() {
+  return {
+    onInit() {
+      this.logger = logger$2.getLogger(this.name || 'Page');
+
+      this.log = (...args) => {
+        this.logger.log(...args);
+      };
+
+      this.error = (...args) => {
+        if (args[0] instanceof Error) {
+          this.logger.error(...args);
+        } else {
+          this.logger.error({}, ...args);
+        }
+      };
+
+      this.debug = (...args) => {
+        this.logger.debug(...args);
+      };
+    },
+    onCreate() {
+      this.logger = logger$2.getLogger(this.name || 'app.js');
+
+      this.log = (...args) => {
+        this.logger.log(...args);
+      };
+
+      this.error = (...args) => {
+        if (args[0] instanceof Error) {
+          this.logger.error(...args);
+        } else {
+          this.logger.error({}, ...args);
+        }
+      };
+
+      this.debug = (...args) => {
+        this.logger.debug(...args);
+      };
+    },
+  }
+}
+
+function BaseApp({ globalData = {}, onCreate, onDestroy, ...other } = {}) {
+  const opts = {
+    globalData,
+    ...other,
+    onCreate(...opts) {
+      for (let i = 0; i <= BaseApp.mixins.length - 1; i++) {
+        const m = BaseApp.mixins[i];
+        m & m.handler.onCreate?.apply(this, opts);
+      }
+      onCreate?.apply(this, opts);
+    },
+    onDestroy(...opts) {
+      onDestroy?.apply(this, opts);
+      for (let i = BaseApp.mixins.length - 1; i >= 0; i--) {
+        const m = BaseApp.mixins[i];
+        m & m.handler.onDestroy?.apply(this, opts);
+      }
+    },
+  };
+
+  BaseApp.handle(opts);
+  return opts
+}
+
+merge(BaseApp, pluginService);
+BaseApp.init();
+
+BaseApp.use(loggerPlugin);
+
+const MGR = '_$mgr$_';
+
+class GlobalThis {
+  constructor(global) {
+    this.global = global;
+  }
+
+  getValue(key) {
+    return this.global[key]
+  }
+
+  setValue(key, value) {
+    return (this.global[key] = value)
+  }
+
+  deleteKey(key) {
+    delete this.global[key];
+  }
+}
+class AppGlobalThis extends GlobalThis {
+  constructor() {
+    super(__$$app$$__.__globals__.__scopedGlobals__);
+  }
+}
+
+function appPlugin$2(opt) {
+  new AppGlobalThis().setValue(MGR, {});
+  opt.$m = {};
+}
+
 const EventBus = _r('@zos/utils').EventBus;
 
 const _setTimeout = _r('@zos/timer').setTimeout;
 const _clearTimeout = _r('@zos/timer').clearTimeout;
+
+const Promise$1 = globalThis.Promise;
 
 function Deferred() {
   const defer = {
     canceled: false,
   };
 
-  defer.promise = new Promise(function (resolve, reject) {
+  defer.promise = new Promise$1(function (resolve, reject) {
     defer.resolve = resolve;
     defer.reject = reject;
   });
@@ -119,23 +308,6 @@ function Deferred() {
   };
 
   return defer
-}
-
-function timeout(ms, cb) {
-  const defer = Deferred();
-  ms = ms || 1000;
-
-  const wait = _setTimeout(() => {
-    _clearTimeout(wait);
-
-    if (cb) {
-      cb && cb(defer.resolve, defer.reject);
-    } else {
-      defer.reject('Timed out in ' + ms + 'ms.');
-    }
-  }, ms);
-
-  return defer.promise
 }
 
 function json2buf(json) {
@@ -155,7 +327,7 @@ function json2str(json) {
 }
 
 function str2buf(str) {
-  return Buffer.from(str, 'utf-8')
+  return buffer.from(str, 'utf-8')
 }
 
 function buf2str(buf) {
@@ -163,7 +335,11 @@ function buf2str(buf) {
 }
 
 function bin2buf(bin) {
-  return Buffer.from(bin)
+  return buffer.from(bin)
+}
+
+function buf2bin(buf) {
+  return buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength)
 }
 
 function buf2hex(buf) {
@@ -235,7 +411,7 @@ function getDataType(type) {
     case DataType.empty:
       return MessagePayloadDataTypeOp.EMPTY
     default:
-      return MessagePayloadDataTypeOp.TEXT
+      return MessagePayloadDataTypeOp.BIN
   }
 }
 
@@ -265,15 +441,14 @@ class Session extends EventBus {
     this.id = id;
     this.type = type; // payloadType
     this.ctx = ctx;
-    this.tempBuf = null;
     this.chunks = [];
-    this.count = 0;
+    this.count = -1;
     this.finishChunk = null;
   }
 
   addChunk(payload) {
     if (payload.opCode === MessagePayloadOpCode.Finished) {
-      this.count = payload.seqId;
+      this.count = payload.seqId + 1;
       this.finishChunk = payload;
     }
 
@@ -298,23 +473,27 @@ class Session extends EventBus {
 
   checkIfReceiveAllChunks() {
     if (this.count !== this.chunks.length) return
+    if (!this.finishChunk) return
 
-    for (let i = 1; i <= this.count; i++) {
-      const chunk = this.chunks.find((c) => c.seqId === i);
+    let bufList = [];
 
-      if (!chunk) {
+    for (let i = 0; i < this.count; i++) {
+      const chunk = this.chunks[i];
+
+      if (!chunk || chunk.seqId !== i) {
+        bufList = null;
         this.releaseBuf();
         this.emit('error', Error('receive data error'));
         return
       }
 
-      const buf = chunk.payload;
-      this.tempBuf = this.tempBuf ? Buffer.concat([this.tempBuf, buf]) : buf;
+      bufList.push(chunk.payload);
     }
 
-    if (!this.finishChunk) return
+    this.chunks = [];
+    this.finishChunk.payload = buffer.concat(bufList);
+    bufList = null;
 
-    this.finishChunk.payload = this.tempBuf;
     this.finishChunk.payloadLength = this.finishChunk.payload.byteLength;
 
     if (this.finishChunk.totalLength !== this.finishChunk.payloadLength) {
@@ -335,11 +514,7 @@ class Session extends EventBus {
     this.emit('data', this.finishChunk);
   }
 
-  getLength() {
-    return this.tempBufLength
-  }
   releaseBuf() {
-    this.tempBuf = null;
     this.chunks = [];
     this.finishChunk = null;
     this.count = 0;
@@ -436,17 +611,11 @@ class MessageBuilder extends EventBus {
     this.ble = ble;
     this.sendMsg = this.getSafeSend();
     this.chunkSize = MESSAGE_PAYLOAD;
-    this.tempBuf = null;
     this.handlers = new Map();
 
     this.shakeTask = null;
     this.waitingShakePromise = null;
-
     this.shakeStatus = ShakeStatus.start;
-    if (appSidePort ){
-      this.shakeStatus = ShakeStatus.success;
-    }
-
     this.shakeTimer = 0;
 
     this.sessionMgr = new SessionMgr();
@@ -464,16 +633,6 @@ class MessageBuilder extends EventBus {
 
     this.shakeTask = Deferred();
     this.waitingShakePromise = this.shakeTask.promise;
-
-    if (this.shakeStatus === ShakeStatus.success){
-
-      logger$1.warn(
-          'shakeTask auto resolve ',
-      );
-      this.shakeTask.resolve();
-      return this.waitingShakePromise
-    }
-
     this.shakeStatus = ShakeStatus.start;
     this.clearShakeTimer();
 
@@ -530,17 +689,11 @@ class MessageBuilder extends EventBus {
     this.ble &&
       this.ble.createConnect((index, data, size) => {
         logger$1.warn(
-            '[RAW] [R] receive index=>%d size=>%d',
+            '[RAW] [R] receive index=>%d size=>%d bin=>%s',
             index,
-            size
-        );
-
-        // logger$1.warn(
-        //     '[RAW] [R] receive index=>%d size=>%d bin=>%s',
-        //     index,
-        //     size,
-        //     bin2hex(data),
-        //   );
+            size,
+            bin2hex(data),
+          );
         this.onFragmentData(data);
       });
 
@@ -569,7 +722,7 @@ class MessageBuilder extends EventBus {
         this.onMessage(message);
       });
 
-    this.waitingShakePromise = Promise.resolve();
+    this.waitingShakePromise = Promise$1.resolve();
     cb && cb(this);
   }
 
@@ -581,7 +734,7 @@ class MessageBuilder extends EventBus {
     }
 
     const size = this.getMessageHeaderSize() + data.payload.byteLength;
-    let buf = Buffer.alloc(size);
+    let buf = buffer.alloc(size);
     let offset = 0;
 
     buf.writeUInt8(data.flag, offset);
@@ -607,13 +760,6 @@ class MessageBuilder extends EventBus {
 
     buf.fill(data.payload, offset, data.payload.byteLength + offset);
 
-
-    debug &&
-    logger$1.warn(
-        'sendBin=%d ',
-        buf.byteLength,
-    );
-
     return buf
   }
 
@@ -626,7 +772,7 @@ class MessageBuilder extends EventBus {
       port2: this.appSidePort,
       appId: this.appId,
       extra: 0,
-      payload: Buffer.from([this.appId]),
+      payload: buffer.from([this.appId]),
     })
   }
 
@@ -645,7 +791,7 @@ class MessageBuilder extends EventBus {
       port2: this.appSidePort,
       appId: this.appId,
       extra: 0,
-      payload: Buffer.from([this.appId]),
+      payload: buffer.from([this.appId]),
     })
   }
 
@@ -656,7 +802,7 @@ class MessageBuilder extends EventBus {
   }
 
   readBin(arrayBuf) {
-    const buf = Buffer.from(arrayBuf);
+    const buf = buffer.from(arrayBuf);
     let offset = 0;
 
     const flag = buf.readUInt8(offset);
@@ -712,16 +858,11 @@ class MessageBuilder extends EventBus {
   sendBin(buf, debug = DEBUG) {
     // ble 发送消息
     debug &&
-    logger$1.warn(
-        'sendBin=%d ',
+      logger$1.warn(
+        '[RAW] [S] send size=%d bin=%s',
         buf.byteLength,
-    );
-    // debug &&
-    //   logger$1.warn(
-    //     '[RAW] [S] send size=%d bin=%s',
-    //     buf.byteLength,
-    //     bin2hex(buf.buffer),
-    //   );
+        bin2hex(buf.buffer),
+      );
     const result = this.ble.send(buf.buffer, buf.byteLength);
 
     if (!result) {
@@ -759,10 +900,10 @@ class MessageBuilder extends EventBus {
     const userDataLength = dataBin.byteLength;
 
     let offset = 0;
-    const _buf = Buffer.alloc(hmDataSize);
+    const _buf = buffer.alloc(hmDataSize);
     const traceId = requestId ? requestId : genTraceId();
     const spanId = genSpanId();
-    let seqId = 1;
+    let seqId = 0;
 
     const count = Math.ceil(userDataLength / hmDataSize);
 
@@ -775,7 +916,7 @@ class MessageBuilder extends EventBus {
       if (i === count) {
         // last
         const tailSize = userDataLength - offset;
-        const tailBuf = Buffer.alloc(headerSize + tailSize);
+        const tailBuf = buffer.alloc(headerSize + tailSize);
 
         dataBin.copy(tailBuf, headerSize, offset, offset + tailSize);
         offset += tailSize;
@@ -842,12 +983,6 @@ class MessageBuilder extends EventBus {
     contentType,
     dataType,
   }) {
-
-    logger$1.warn(
-        'sendJson %s',
-        objToString(json)
-    );
-
     const packageBin = json2buf(json);
     const traceId = requestId ? requestId : genTraceId();
 
@@ -872,6 +1007,25 @@ class MessageBuilder extends EventBus {
     return this.sendHmProtocol({
       requestId: traceId,
       dataBin: buf,
+      type,
+      contentType,
+      dataType,
+    })
+  }
+
+  sendText({
+    requestId = 0,
+    text,
+    type = MessagePayloadType.Request,
+    contentType,
+    dataType,
+  }) {
+    const packageBin = str2buf(text);
+    const traceId = requestId ? requestId : genTraceId();
+
+    return this.sendHmProtocol({
+      requestId: traceId,
+      dataBin: packageBin,
       type,
       contentType,
       dataType,
@@ -915,7 +1069,7 @@ class MessageBuilder extends EventBus {
 
   buildPayload(data) {
     const size = HM_MESSAGE_PROTO_HEADER + data.payload.byteLength;
-    let buf = Buffer.alloc(size);
+    let buf = buffer.alloc(size);
     let offset = 0;
 
     // header
@@ -1005,7 +1159,7 @@ class MessageBuilder extends EventBus {
   }
 
   readPayload(arrayBuf) {
-    const buf = Buffer.from(arrayBuf);
+    const buf = buffer.from(arrayBuf);
     let offset = 0;
 
     const traceId = buf.readUInt32LE(offset);
@@ -1101,8 +1255,7 @@ class MessageBuilder extends EventBus {
     const data = this.readBin(bin);
     this.emit('raw', bin);
 
-    logger$1.debug('watch received data');
-    //logger$1.debug('received data=>', objToString(data));
+    logger$1.debug('receive data=>', JSON.stringify(data));
     if (data.flag === MessageFlag.App && data.type === MessageType.Shake) {
       this.appSidePort = data.port2;
       logger$1.debug('shake success appSidePort=>', data.port2);
@@ -1150,7 +1303,7 @@ class MessageBuilder extends EventBus {
   }
 
   errorIfSideServiceDisconnect() {
-    if (!isZeppOS) {
+    if (!isZeppOS()) {
       return
     }
 
@@ -1188,11 +1341,17 @@ class MessageBuilder extends EventBus {
           if (fullPayload.payloadType === MessagePayloadType.Request) {
             this.emit('request', {
               request: fullPayload,
-              response: ({ data }) => {
+              response: ({ data, dataType }) => {
+                if (typeof dataType !== 'undefined') {
+                  dataType = getDataType(dataType);
+                } else {
+                  dataType = fullPayload.dataType;
+                }
+
                 this.response({
                   requestId: fullPayload.traceId,
                   contentType: fullPayload.contentType,
-                  dataType: fullPayload.dataType,
+                  dataType,
                   data,
                 });
               },
@@ -1227,35 +1386,61 @@ class MessageBuilder extends EventBus {
     try {
       this.errorIfBleDisconnect();
     } catch (error) {
-      return Promise.reject(error)
+      return Promise$1.reject(error)
     }
 
     const requestTask = () => {
       this.errorIfBleDisconnect();
       this.errorIfSideServiceDisconnect();
 
+      let contentType = DataType.bin;
+
+      if (typeof data === 'string') {
+        contentType = DataType.text;
+      } else if (isPlainObject(data)) {
+        contentType = DataType.json;
+      } else if (
+        data instanceof ArrayBuffer ||
+        ArrayBuffer.isView(data) ||
+        buffer.isBuffer(data)
+      ) {
+        contentType = DataType.bin;
+      }
+
       const defaultOpts = {
         timeout: 60000,
-        contentType: 'json',
-        dataType: 'json',
+        contentType,
+        dataType: contentType,
       };
       const requestId = genTraceId();
+
       const requestPromiseTask = Deferred();
       opts = Object.assign(defaultOpts, opts);
+
+      let timer = _setTimeout(() => {
+        timer = null;
+
+        requestPromiseTask.reject(
+          new MessageError(MessageErrorCode.TIMEOUT, 'request timeout'),
+        );
+      }, opts.timeout);
+
+      let cancelTimer = () => {
+        if (timer) {
+          _clearTimeout(timer);
+          timer = null;
+        }
+      };
 
       const transact = ({ traceId, payload, dataType }) => {
         this.errorIfBleDisconnect();
         this.errorIfSideServiceDisconnect();
 
         logger$1.debug(
-            'transact traceId=>%d',
+            'traceId=>%d payload=>%s',
             traceId,
-        );
-        // logger$1.debug(
-        //     'traceId=>%d payload=>%s',
-        //     traceId,
-        //     payload.toString('hex'),
-        //   );
+            payload.toString('hex'),
+          );
 
         let result;
         switch (dataType) {
@@ -1268,23 +1453,20 @@ class MessageBuilder extends EventBus {
           case MessagePayloadDataTypeOp.JSON:
             result = buf2json(payload);
             break
-          default: // text
+          default: // buf
             result = payload;
             break
         }
-       // payload = null;
-        this.emit('data:result', result);
 
-        //logger$1.debug('request id=>%d', requestId);
-        // logger$1.debug('request id=>%d payload=>%j', requestId, data);
-        // logger$1.debug('response id=>%d payload=>%j', requestId, result);
+        logger$1.debug('request id=>%d payload=>%j', requestId, data);
+        logger$1.debug('response id=>%d payload=>%j', requestId, result);
+
         requestPromiseTask.resolve(result);
-
       };
 
-      // this.on('response', transact)
       this.handlers.set(requestId, transact);
-      if (Buffer.isBuffer(data)) {
+
+      if (buffer.isBuffer(data)) {
         this.sendBuf({
           requestId,
           buf: data,
@@ -1295,12 +1477,14 @@ class MessageBuilder extends EventBus {
       } else if (data instanceof ArrayBuffer || ArrayBuffer.isView(data)) {
         this.sendBuf({
           requestId,
-          buf: Buffer.from(data),
+          buf: buffer.from(data),
           type: MessagePayloadType.Request,
           contentType: MessagePayloadDataTypeOp.BIN,
           dataType: getDataType(opts.dataType),
         });
-      } else {
+      } else if (
+        getDataType(opts.contentType) === MessagePayloadDataTypeOp.JSON
+      ) {
         this.sendJson({
           requestId,
           json: data,
@@ -1308,38 +1492,34 @@ class MessageBuilder extends EventBus {
           contentType: MessagePayloadDataTypeOp.JSON,
           dataType: getDataType(opts.dataType),
         });
+      } else if (
+        getDataType(opts.contentType) === MessagePayloadDataTypeOp.TEXT
+      ) {
+        this.sendText({
+          requestId,
+          text: data,
+          type: MessagePayloadType.Request,
+          contentType: MessagePayloadDataTypeOp.TEXT,
+          dataType: getDataType(opts.dataType),
+        });
+      } else {
+        this.sendBuf({
+          requestId,
+          buf: buffer.from(data),
+          type: MessagePayloadType.Request,
+          contentType: MessagePayloadDataTypeOp.BIN,
+          dataType: getDataType(opts.dataType),
+        });
       }
 
-      let hasReturned = false;
-
-      return Promise.race([
-        timeout(opts.timeout, (resolve, reject) => {
-          if (hasReturned) {
-            return resolve()
-          }
-
-          logger$1.error(
-              `request timeout in ${opts.timeout}ms error=> %d data=> %j`,
-              requestId,
-              data,
-            );
-
-          reject(
-            new MessageError(
-              MessageErrorCode.REQUEST_TIME_OUT,
-              `request timed out in ${opts.timeout}ms.`,
-            ),
-          );
-        }),
-        requestPromiseTask.promise.finally(() => {
-          hasReturned = true;
-        }),
-      ])
+      return requestPromiseTask.promise
         .catch((e) => {
           logger$1.error('error %j', e);
           throw e
         })
         .finally(() => {
+          logger$1.debug('release request id=>%d', requestId);
+          cancelTimer();
           this.handlers.delete(requestId);
         })
     };
@@ -1360,13 +1540,29 @@ class MessageBuilder extends EventBus {
         contentType,
         dataType,
       });
-    } else {
+    } else if (MessagePayloadDataTypeOp.TEXT === dataType) {
+      this.sendText({
+        requestId,
+        text: data,
+        type: MessagePayloadType.Response,
+        contentType,
+        dataType,
+      });
+    } else if (MessagePayloadDataTypeOp.JSON === dataType) {
       this.sendJson({
         requestId,
         json: data,
         type: MessagePayloadType.Response,
         contentType,
         dataType,
+      });
+    } else {
+      this.sendBuf({
+        requestId,
+        buf: data,
+        type: MessagePayloadType.Response,
+        contentType,
+        dataType: MessagePayloadDataTypeOp.BIN,
       });
     }
   }
@@ -1377,8 +1573,22 @@ class MessageBuilder extends EventBus {
    * @returns
    */
   call(data) {
+    let contentType = MessagePayloadDataTypeOp.JSON;
+
+    if (typeof data === 'string') {
+      contentType = MessagePayloadDataTypeOp.TEXT;
+    } else if (isPlainObject(data)) {
+      contentType = MessagePayloadDataTypeOp.JSON;
+    } else if (
+      data instanceof ArrayBuffer ||
+      ArrayBuffer.isView(data) ||
+      buffer.isBuffer(data)
+    ) {
+      contentType = MessagePayloadDataTypeOp.BIN;
+    }
+
     return this.waitingShakePromise.then(() => {
-      if (Buffer.isBuffer(data)) {
+      if (buffer.isBuffer(data)) {
         return this.sendBuf({
           buf: data,
           type: MessagePayloadType.Notify,
@@ -1387,16 +1597,30 @@ class MessageBuilder extends EventBus {
         })
       } else if (data instanceof ArrayBuffer || ArrayBuffer.isView(data)) {
         return this.sendBuf({
-          buf: Buffer.from(data),
+          buf: buffer.from(data),
           type: MessagePayloadType.Notify,
           contentType: MessagePayloadDataTypeOp.BIN,
           dataType: MessagePayloadDataTypeOp.EMPTY,
         })
-      } else {
+      } else if (contentType === MessagePayloadDataTypeOp.JSON) {
         return this.sendJson({
           json: data,
           type: MessagePayloadType.Notify,
           contentType: MessagePayloadDataTypeOp.JSON,
+          dataType: MessagePayloadDataTypeOp.EMPTY,
+        })
+      } else if (contentType === MessagePayloadDataTypeOp.TEXT) {
+        return this.sendText({
+          text: data,
+          type: MessagePayloadType.Notify,
+          contentType: MessagePayloadDataTypeOp.TEXT,
+          dataType: MessagePayloadDataTypeOp.EMPTY,
+        })
+      } else {
+        return this.sendBuf({
+          buf: buffer.from(data),
+          type: MessagePayloadType.Notify,
+          contentType: MessagePayloadDataTypeOp.BIN,
           dataType: MessagePayloadDataTypeOp.EMPTY,
         })
       }
@@ -1409,6 +1633,8 @@ const logger = logger$2.getLogger('message-builder');
 const shakeTimeout = 5000;
 const requestTimeout = 60000;
 
+const HM_RPC = 'hmrpcv1';
+
 function wrapperMessage(messageBuilder) {
   return {
     shakeTimeout,
@@ -1416,9 +1642,21 @@ function wrapperMessage(messageBuilder) {
     transport: messageBuilder,
     onCall(cb) {
       if (!cb) return this
-      messageBuilder.on('call', ({ payload }) => {
-        const jsonRpc = messageBuilder.buf2Json(payload);
-        cb && cb(jsonRpc);
+      messageBuilder.on('call', ({ contentType, payload }) => {
+        switch (contentType) {
+          case MessagePayloadDataTypeOp.JSON:
+            payload = buf2json(payload);
+            break
+          case MessagePayloadDataTypeOp.TEXT:
+            payload = buf2str(payload);
+            break
+          case MessagePayloadDataTypeOp.BIN:
+          default:
+            payload = buf2bin(payload);
+            break
+        }
+
+        cb && cb(payload);
       });
 
       return this
@@ -1429,29 +1667,60 @@ function wrapperMessage(messageBuilder) {
     },
     call(data) {
       isZeppOS() && messageBuilder.fork(this.shakeTimeout);
-      return messageBuilder.call({
-        jsonrpc: 'hmrpcv1',
-        ...data,
-      })
+      data = isPlainObject(data)
+        ? data.contentType
+          ? data
+          : {
+              jsonrpc: HM_RPC,
+              ...data,
+            }
+        : data;
+      return messageBuilder.call(data)
     },
     onRequest(cb) {
       if (!cb) return this
       messageBuilder.on('request', (ctx) => {
-        const jsonRpc = messageBuilder.buf2Json(ctx.request.payload);
+        let payload = ctx.request.payload;
+
+        switch (ctx.request.contentType) {
+          case MessagePayloadDataTypeOp.JSON:
+            payload = buf2json(payload);
+            break
+          case MessagePayloadDataTypeOp.TEXT:
+            payload = buf2str(payload);
+            break
+          case MessagePayloadDataTypeOp.BIN:
+          default:
+            payload = buf2bin(payload);
+            break
+        }
+
         cb &&
-          cb(jsonRpc, (error, data) => {
-            if (error) {
+          cb(payload, (error, data, opts = {}) => {
+            if (
+              ctx.request.contentType === MessagePayloadDataTypeOp.JSON &&
+              payload?.jsonrpc === HM_RPC
+            ) {
+              if (error) {
+                return ctx.response({
+                  data: {
+                    jsonrpc: HM_RPC,
+                    error,
+                  },
+                })
+              }
+
               return ctx.response({
                 data: {
-                  error,
+                  jsonrpc: HM_RPC,
+                  result: data,
                 },
               })
             }
 
             return ctx.response({
-              data: {
-                result: data,
-              },
+              data,
+              ...opts,
             })
           });
       });
@@ -1466,23 +1735,34 @@ function wrapperMessage(messageBuilder) {
       messageBuilder.off('request', cb);
       return this
     },
-    request(data) {
+    request(data, opts = {}) {
       isZeppOS() && messageBuilder.fork(this.shakeTimeout);
       logger.debug(
           'current request count=>%d',
           messageBuilder.getRequestCount(),
         );
+
+      data = isPlainObject(data)
+        ? opts.contentType
+          ? data
+          : {
+              jsonrpc: HM_RPC,
+              ...data,
+            }
+        : data;
+
       return messageBuilder
-        .request(
-          {
-            jsonrpc: 'hmrpcv1',
-            ...data,
-          },
-          {
-            timeout: this.requestTimeout,
-          },
-        )
-        .then(({ error, result }) => {
+        .request(data, {
+          timeout: this.requestTimeout,
+          ...opts,
+        })
+        .then((payload) => {
+          if (!isPlainObject(payload) || payload.jsonrpc !== HM_RPC) {
+            return payload
+          }
+
+          // hmrpc
+          const { error, result } = payload;
           if (error) {
             throw error
           }
@@ -1528,14 +1808,48 @@ function wrapperMessage(messageBuilder) {
 }
 
 const appDevicePort = 20;
+const appSidePort = 0;
 
-function createDeviceMessage(appSidePort = 0) {
+function createDeviceMessage() {
   const messageBuilder = new MessageBuilder({
     appId: getPackageInfo().appId,
     appDevicePort,
     appSidePort,
   });
+
   return wrapperMessage(messageBuilder)
+}
+
+function httpRequest(data, opts = {}) {
+  return this.messaging.request(
+    {
+      method: 'http.request',
+      params: data,
+    },
+    opts,
+  )
+}
+
+export function appPlugin$1(opts) {
+  const messaging = createDeviceMessage();
+  return {
+    onCreate() {
+      this.messaging = this.globalData.messaging = messaging;
+      this._onCall = this.onCall?.bind(this);
+      this._onRequest = this.onRequest?.bind(this);
+      this.messaging.onCall(this._onCall).onRequest(this._onRequest).connect();
+    },
+    onDestroy() {
+      this.messaging.offOnCall().offOnRequest().disConnect();
+    },
+    request(data, opts = {}) {
+      return this.messaging.request(data, opts)
+    },
+    call(data) {
+      return this.messaging.call(data)
+    },
+    httpRequest,
+  }
 }
 
 function getFileTransfer(fileTransfer) {
@@ -1544,14 +1858,20 @@ function getFileTransfer(fileTransfer) {
    *     device supported newfile and file
    *     side supported file
    */
-
   return {
+    canUseFileTransfer() {
+      if (typeof fileTransfer === 'undefined') {
+        console.log('WARNING: FileTransfer require API_LEVEL 3.0');
+        return false
+      }
+      return true
+    },
     onFile(cb) {
       if (!cb) {
         return this
       }
 
-      if (typeof fileTransfer === 'undefined') {
+      if (!this.canUseFileTransfer()) {
         return this
       }
 
@@ -1567,7 +1887,7 @@ function getFileTransfer(fileTransfer) {
         return this
       }
 
-      if (typeof fileTransfer === 'undefined') {
+      if (!this.canUseFileTransfer()) {
         return this
       }
 
@@ -1583,7 +1903,7 @@ function getFileTransfer(fileTransfer) {
       return this
     },
     offFile() {
-      if (typeof fileTransfer === 'undefined') {
+      if (!this.canUseFileTransfer()) {
         return this
       }
 
@@ -1592,14 +1912,14 @@ function getFileTransfer(fileTransfer) {
       return this
     },
     getFile() {
-      if (typeof fileTransfer === 'undefined') {
+      if (!this.canUseFileTransfer()) {
         return null
       }
 
       return fileTransfer.inbox.getNextFile()
     },
     sendFile(path, opts) {
-      if (typeof fileTransfer === 'undefined') {
+      if (!this.canUseFileTransfer()) {
         throw new Error('fileTransfer is not available')
       }
 
@@ -1609,41 +1929,24 @@ function getFileTransfer(fileTransfer) {
 }
 
 const TransferFile = _r('@zos/ble/TransferFile');
-const fileTransferLib = getFileTransfer(new TransferFile());
+const fileTransferLib = getFileTransfer(
+  TransferFile ? new TransferFile() : undefined,
+);
 
-function BaseApp({ globalData = {}, onCreate, onDestroy, sidePort, onMessagingCreate, ...other } = {}) {
+function appPlugin(opts) {
   return {
-    globalData,
-    ...other,
-    onCreate(...opts) {
-      const messaging = createDeviceMessage(sidePort);
-      this.globalData.messaging = messaging;
-
-      onMessagingCreate?.apply(this);
-
-      messaging
-        .onCall(this.onCall?.bind(this))
-        .onRequest(this.onRequest?.bind(this))
-        .connect();
-
+    onCreate() {
       fileTransferLib.onFile(this.onReceivedFile?.bind(this));
-
-      onCreate?.apply(this, opts);
     },
-    onDestroy(...opts) {
-      const messaging = this.globalData.messaging;
-      messaging.offOnCall().offOnRequest().disConnect();
-
+    onDestroy() {
       fileTransferLib.offFile();
-      onDestroy?.apply(this, opts);
     },
-    httpRequest(data) {
-      return messaging.request({
-        method: 'http.request',
-        params: data,
-      })
+    sendFile(path, opts) {
+      return fileTransferLib.sendFile(path, opts)
     },
   }
 }
+
+BaseApp.use(appPlugin$2).use(appPlugin$1).use(appPlugin);
 
 export { BaseApp };

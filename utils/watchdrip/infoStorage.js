@@ -8,6 +8,9 @@ const STORAGE_TYPE = {
 
 export class InfoStorage {
     storage;
+    storageType;
+    itemName;
+    data;
 
     /**
      *
@@ -30,15 +33,18 @@ export class InfoStorage {
     }
 
     read() {
-        //console.log('sRead');
+        console.log('sRead');
         let info = null;
         if (this.storageType === STORAGE_TYPE.FILE) {
-            info = this.#readFile();
+            info = this.readFile();
         } else {
-            info = this.#readLocalStorageItem();
+            info = this.readLocalStorageItem();
         }
-        this.#unparse(info)
+        if (!info){ return false;}
+        this.unparse(info)
+        return true;
     }
+
     get(key, fallback=null) {
         if(this.data[key] !== undefined)
             return this.data[key];
@@ -50,7 +56,8 @@ export class InfoStorage {
         this.save();
     }
 
-    #readFile() {
+    readFile() {
+        console.log("readFile")
         try {
             let info = this.storage.fetchText();
             return info;
@@ -59,14 +66,15 @@ export class InfoStorage {
         return null;
     }
 
-    #readLocalStorageItem() {
+    readLocalStorageItem() {
+        console.log("readLocalStorageItem")
         let info = this.storage.getItem(this.itemName);
         return info
     }
 
-    #unparse(info) {
+    unparse(info) {
         if (!info) return;
-        //console.log(info)
+        console.log("unparse " + info)
         let parsed = str2json(info);
 
         if (parsed) {
@@ -75,24 +83,25 @@ export class InfoStorage {
     }
 
     save() {
-        //console.log('save');
+        console.log('save');
         let info = json2str(this.data);
         if (this.storageType === STORAGE_TYPE.FILE) {
-            this.#saveFile(info);
+            this.saveFile(info);
         } else {
-            this.#saveLocalStorageItem(info);
+            this.saveLocalStorageItem(info);
         }
     }
 
     /**
      * @param {string} info data */
-    #saveFile(info) {
+    saveFile(info) {
+        console.log('saveFile');
         this.storage.overrideWithText(info);
     }
 
     /**
      * @param {string} info data */
-    #saveLocalStorageItem(info) {
+    saveLocalStorageItem(info) {
         this.storage.setItem(this.itemName, info)
     }
 }

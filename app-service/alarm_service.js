@@ -99,7 +99,7 @@ function getTime() {
 function handle(p) {
     try {
         logger.log(`handle`);
-        let data = {action: ALARM_SERVICE_ACTION.START_SERVICE};
+        let data = {action: ALARM_SERVICE_ACTION.UPDATE};
         try {
             if (!(!p || p === 'undefined')) {
                 data = JSON.parse(p);

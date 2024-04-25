@@ -1,8 +1,11 @@
 export const WF_DIR = "/storage/js_apps/data/watchdrip";
 export const WF_INFO_FILE = WF_DIR + "/info.json";
 
-export const SERVICE_NAME = "app-service/fetch_service";
+export const FETCH_SERVICE_NAME = "app-service/fetch_service";
 export const ALARM_SERVICE_NAME = "app-service/alarm_service";
+
+export const WF_STATUS_FILE = WF_DIR + "/status.json";
+export const WF_CONFIG_FILE = WF_DIR + "/config.json";
 
 export const WATCHDRIP_SETTINGS_DEFAULTS = {
     s_disableUpdates: false,

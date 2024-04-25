@@ -69,3 +69,10 @@ export function objToString(obj, ndeep) {
             return obj.toString();
     }
 }
+
+export function isTimeout(time, timeout_ms) {
+    if (!time) {
+        return false;
+    }
+    return getTimestamp() - time > timeout_ms;
+}
