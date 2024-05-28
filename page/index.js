@@ -108,7 +108,7 @@ class Watchdrip {
                 break;
             case PagesType.UPDATE_LOCAL:
                 this.goBackType = GoBackType.HIDE;
-                this.fetch_page();
+                this.fetch_page_local();
                 break;
             case PagesType.HIDE:
                 this.hide_page();
@@ -329,6 +329,17 @@ class Watchdrip {
             this.handleGoBack();
             return;
         }
+        hmSetting.setBrightScreen(999);
+        this.progressWidget = hmUI.createWidget(hmUI.widget.IMG, IMG_LOADING_PROGRESS);
+        this.progressAngle = 0;
+        this.stopLoader();
+        this.fetchMode = FetchMode.HIDDEN;
+        this.fetchInfo(this.conf.alarmSettings.fetchParams);
+    }
+
+    fetch_page_local() {
+        debug.log("fetch_page");
+        hmUI.setStatusBarVisible(false);
         hmSetting.setBrightScreen(999);
         this.progressWidget = hmUI.createWidget(hmUI.widget.IMG, IMG_LOADING_PROGRESS);
         this.progressAngle = 0;

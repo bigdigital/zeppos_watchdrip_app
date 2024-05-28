@@ -128,6 +128,14 @@
           "deviceSource": 225
         },
         {
+          "name": "active1",
+          "deviceSource": 8323328
+        },
+        {
+          "name": "active2",
+          "deviceSource": 8323329
+        },	
+        {
           "name": "gts4",
           "deviceSource": 7995648
         },

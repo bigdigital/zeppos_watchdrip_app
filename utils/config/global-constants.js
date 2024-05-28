@@ -15,5 +15,5 @@ export const WATCHDRIP_SETTINGS_DEFAULTS = {
 
 export const WATCHDRIP_ALARM_SETTINGS_DEFAULTS = {
     fetchInterval: ALARM_UPDATE_INTERVAL,
-    fetchParams: ""
+    fetchParams: "graph=1"
 };
