@@ -212,6 +212,22 @@
           "deviceSource": 8454401
         },
         {
+          "name": "bip_5_2",
+          "deviceSource": 8454400
+        },
+        {
+          "name": "bip_5_unity",
+          "deviceSource": 8782081
+        },
+        {
+          "name": "bip_5_unity_2",
+          "deviceSource": 8782088
+        },
+        {
+          "name": "bip_5_unity_3",
+          "deviceSource": 8782089
+        },
+        {
           "name": "cheetah_pro_1",
           "deviceSource": 8126720
         },
