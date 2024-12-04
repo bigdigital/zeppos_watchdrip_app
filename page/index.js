@@ -13,7 +13,7 @@ import {
     XDRIP_UPDATE_INTERVAL_MS,
 } from "../utils/config/constants";
 import {
-    WATCHDRIP_ALARM_SETTINGS_DEFAULTS, WF_DIR,
+    WATCHDRIP_ALARM_SETTINGS_DEFAULTS, WF_DIR, WF_INFO_ASSET_FILE,
     WF_INFO_FILE,
 } from "../utils/config/global-constants";
 import {
@@ -88,6 +88,7 @@ class Watchdrip {
         debug.setEnabled(this.conf.settings.showLog);
 
         this.infoFile = new Path("full", WF_INFO_FILE);
+        this.assetInfoFile = new Path("assets", WF_INFO_ASSET_FILE);
     }
 
     start(data) {
@@ -556,6 +557,7 @@ class Watchdrip {
     saveInfo(info) {
         debug.log("saveInfo");
         this.infoFile.overrideWithText(info);
+        this.assetInfoFile.overrideWithText(info);
         this.lastUpdateSucessful = true;
         let time = this.timeSensor.utc;
         this.conf.infoLastUpd = time
