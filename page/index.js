@@ -13,7 +13,7 @@ import {
     XDRIP_UPDATE_INTERVAL_MS,
 } from "../utils/config/constants";
 import {
-    WATCHDRIP_ALARM_SETTINGS_DEFAULTS, WF_DIR, WF_INFO_ASSET_FILE,
+    WATCHDRIP_ALARM_SETTINGS_DEFAULTS, WF_DIR,
     WF_INFO_FILE,
 } from "../utils/config/global-constants";
 import {
@@ -74,10 +74,9 @@ class Watchdrip {
         this.vibrate = hmSensor.createSensor(hmSensor.id.VIBRATE);
         this.globalNS = getGlobal();
         this.goBackType = GoBackType.NONE;
-
+        this.intervalWatchdog = null;
         this.system_alarm_id = null;
         this.lastInfoUpdate = 0;
-        this.firstDisplay = true;
         this.lastUpdateAttempt = null;
         this.lastUpdateSucessful = false;
         this.updatingData = false;
@@ -88,7 +87,6 @@ class Watchdrip {
         debug.setEnabled(this.conf.settings.showLog);
 
         this.infoFile = new Path("full", WF_INFO_FILE);
-        this.assetInfoFile = new Path("assets", WF_INFO_ASSET_FILE);
     }
 
     start(data) {
@@ -386,6 +384,11 @@ class Watchdrip {
             this.showMessage(getText("connecting"));
         } else {
             this.startLoader();
+            if (this.intervalWatchdog === null) {
+                this.intervalWatchdog = this.globalNS.setTimeout(() => {
+                    this.handleGoBack();
+                }, 5000);
+            }
         }
         this.updatingData = true;
         messageBuilder
@@ -521,9 +524,9 @@ class Watchdrip {
     readInfo() {
         let data = this.infoFile.fetchJSON();
         if (data) {
-                debug.log("data was read");
-                this.watchdripData.setData(data);
-                this.watchdripData.timeDiff = 0;
+            debug.log("data was read");
+            this.watchdripData.setData(data);
+            this.watchdripData.timeDiff = 0;
             data = null;
             return true
         }
@@ -548,16 +551,21 @@ class Watchdrip {
     }
 
     createWatchdripDir() {
-        let dir = new Path("full", WF_DIR);
-        if (!dir.exists()) {
-            dir.mkdir();
+        const systemInfo = hmSetting.getSystemInfo();
+        try {
+            if (Number(systemInfo.osVersion) < 3) {
+                let dir = new Path("full", WF_DIR);
+                if (!dir.exists()) {
+                    dir.mkdir();
+                }
+            }
+        } catch (e) {
         }
     }
 
     saveInfo(info) {
         debug.log("saveInfo");
         this.infoFile.overrideWithText(info);
-        this.assetInfoFile.overrideWithText(info);
         this.lastUpdateSucessful = true;
         let time = this.timeSensor.utc;
         this.conf.infoLastUpd = time

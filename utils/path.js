@@ -2,11 +2,25 @@ const deviceID = hmSetting.getDeviceInfo().deviceName;
 export const isMiBand7 = deviceID === "Xiaomi Smart Band 7";
 
 export class Path {
-    constructor(scope, path) {
-        if(path[0] != "/") path = "/" + path;
+    constructor(scope, path, appid = 0) {
+        this.localFS = false
+        try {
+            const systemInfo = hmSetting.getSystemInfo();
+            if (Number(systemInfo.osVersion) >= 3){
+                this.localFS = true;
+                path = path.substring(path.lastIndexOf('/') + 1);
+                scope = "data";
+            }
+            else {
+                if(path[0] !== "/") path = "/" + path;
+            }
+        } catch (e) {
+
+        }
 
         this.scope = scope;
         this.path = path;
+        this.appid = appid;
 
         if (scope === "assets") {
             this.relativePath = path;
@@ -16,7 +30,7 @@ export class Path {
             this.absolutePath = FsTools.fullDataPath(path);
         } else if (scope === "full") {
             this.relativePath = `../../../${path.substring(9)}`;
-            if(this.relativePath.endsWith("/"))
+            if (this.relativePath.endsWith("/"))
                 this.relativePath = this.relativePath.substring(0, this.relativePath.length - 1);
             this.absolutePath = path;
         } else {
@@ -34,7 +48,7 @@ export class Path {
     }
 
     src() {
-        if(this.scope !== "assets")
+        if (this.scope !== "assets")
             throw new Error("Can't get src for non-asset");
         return this.relativePath.substring(1);
     }
@@ -49,13 +63,13 @@ export class Path {
 
     size() {
         const [st, e] = this.stat();
-        if(st.size) {
+        if (st.size) {
             // Is file, nothing to do anymore
             return st.size;
         }
 
         let output = 0;
-        for(const file of this.list()[0]) {
+        for (const file of this.list()[0]) {
             output += this.get(file).size();
         }
 
@@ -64,7 +78,7 @@ export class Path {
 
     open(flags) {
         if (this.scope === "data") {
-            this._f = hmFS.open(this.relativePath, flags);
+        this._f = hmFS.open(this.relativePath, flags);
         } else {
             this._f = hmFS.open_asset(this.relativePath, flags);
         }
@@ -87,7 +101,7 @@ export class Path {
     removeTree() {
         // Recursive !!!
         const [files, e] = this.list();
-        for(let i in files) {
+        for (let i in files) {
             this.get(files[i]).removeTree();
         }
 
@@ -107,17 +121,70 @@ export class Path {
         return buffer;
     }
 
+    // fetch() {
+    //     console.log('fetch file:' + this.relativePath);
+    //
+    //     const [st, e] = this.stat();
+    //
+    //     console.log( 'stat size' +  st.size);
+    //
+    //     let chunkSize = 256;
+    //     let bytesRead = 0
+    //     const chunks = [];
+    //     this.open(hmFS.O_RDONLY);
+    //     while (true) {
+    //         const buffer = new ArrayBuffer(chunkSize);
+    //         const count = this.read(buffer, 0, chunkSize);
+    //         console.log("read:" + count)
+    //         if (count <= 0) {
+    //             break;
+    //         }
+    //
+    //         chunks.push(new Uint8Array(buffer, 0, count));
+    //         bytesRead += count;
+    //
+    //         if (count < chunkSize) {
+    //             break;
+    //         }
+    //     }
+    //
+    //     this.close();
+    //     if (bytesRead === 0) {
+    //         return null;
+    //     }
+    //     console.log("bytesRead:" + bytesRead)
+    //     // Concatenate all chunks
+    //     const allData = new Uint8Array(bytesRead);
+    //     let offset = 0;
+    //     for (const chunk of chunks) {
+    //         allData.set(chunk, offset);
+    //         offset += chunk.length;
+    //     }
+    //     return allData;
+    // }
+
     fetchText(limit = Infinity) {
         const buf = this.fetch(limit);
         if (!buf) return buf;
-        const view = new Uint8Array(buf);
-        return FsTools.decodeUtf8(view, limit)[0];
+
+        if (this.localFS){
+            return FsTools.ab2str(buf);
+        }
+        else{
+            return FsTools.decodeUtf8(buf, limit)[0];
+        }
     }
 
     fetchJSON() {
         const text = this.fetchText();
+
         if (!text) return text;
-        return JSON.parse(text);
+        try {
+            return JSON.parse(text);
+        } catch (e) {
+            console.log('cannot parse json');
+            return null;
+        }
     }
 
     override(buffer) {
@@ -129,7 +196,14 @@ export class Path {
     }
 
     overrideWithText(text) {
-        return this.override(FsTools.strToUtf8(text));
+        let buf;
+        if (this.localFS){
+            buf = FsTools.str2ab(text);
+        }
+        else{
+            buf = FsTools.strToUtf8(text);
+        }
+        return this.override(buf);
     }
 
     overrideWithJSON(data) {
@@ -143,16 +217,16 @@ export class Path {
 
     copyTree(destEntry, move = false) {
         // Recursive !!!
-        if(this.isFile()) {
+        if (this.isFile()) {
             this.copy(destEntry);
         } else {
             dest.mkdir();
-            for(const file of this.list()[0]) {
+            for (const file of this.list()[0]) {
                 this.get(file).copyTree(destEntry.get(file));
             }
         }
 
-        if(move) this.removeTree();
+        if (move) this.removeTree();
     }
 
     isFile() {
@@ -161,7 +235,7 @@ export class Path {
     }
 
     isFolder() {
-        if(this.absolutePath == "/storage") return true;
+        if (this.absolutePath == "/storage") return true;
         const [st, e] = this.stat();
         return e == 0 && (st.mode & 32768) == 0;
     }
@@ -176,7 +250,6 @@ export class Path {
 
     mkdir() {
         const path = isMiBand7 ? this.absolutePath : this.relativePath;
-        console.log("mkdir " + path);
         return hmFS.mkdir(path);
     }
 
@@ -186,7 +259,7 @@ export class Path {
 
     read(buffer, offset, length) {
         console.log("read");
-        hmFS.read(this._f, buffer, offset, length)
+        return hmFS.read(this._f, buffer, offset, length)
     }
 
     write(buffer, offset, length) {
@@ -292,12 +365,25 @@ export class FsTools {
         return [out, i - startPosition];
     }
 
+    static ab2str(buf) {
+        return String.fromCharCode.apply(null, new Uint8Array(buf));
+    }
+
+    static str2ab(str) {
+        var buf = new ArrayBuffer(str.length)
+        var bufView = new Uint8Array(buf)
+        for (var i = 0, strLen = str.length; i < strLen; i++) {
+            bufView[i] = str.charCodeAt(i)
+        }
+        return buf
+    }
+
     static Utf8ArrayToStr(array) {
         return FsTools.decodeUtf8(array)[0];
     }
 
     static printBytes(val) {
-        if(this.fsUnitCfg === undefined)
+        if (this.fsUnitCfg === undefined)
             this.fsUnitCfg = hmFS.SysProGetBool("mmk_tb_fs_unit");
 
         const options = this.fsUnitCfg ? ["B", "KiB", "MiB"] : ["B", "KB", "MB"];

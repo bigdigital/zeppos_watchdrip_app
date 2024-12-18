@@ -5,8 +5,8 @@
     "appName": "WatchDrip+",
     "appType": "app",
     "version": {
-      "code": 1,
-      "name": "2.0.0"
+      "code": 3,
+      "name": "2.0.2"
     },
     "vender": "bigdigital",
     "description": "The watchface for watchdrip application",
