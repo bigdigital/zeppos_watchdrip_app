@@ -545,15 +545,17 @@ class Watchdrip {
     }
 
     createWatchdripDir() {
-        const systemInfo = hmSetting.getSystemInfo();
-        try {
-            if (Number(systemInfo.osVersion) < 3) {
-                let dir = new Path("full", WF_DIR);
-                if (!dir.exists()) {
-                    dir.mkdir();
-                }
-            }
+        let systemInfo;
+        try { //create dir for old firmwares
+            systemInfo = hmSetting.getSystemInfo();
         } catch (e) {
+            systemInfo.osVersion = 1;
+        }
+        if (Number(systemInfo.osVersion) < 3) {
+            let dir = new Path("full", WF_DIR);
+            if (!dir.exists()) {
+                dir.mkdir();
+            }
         }
     }
 
