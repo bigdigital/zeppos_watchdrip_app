@@ -6,7 +6,7 @@
     "appType": "app",
     "version": {
       "code": 3,
-      "name": "2.0.2"
+      "name": "2.0.3"
     },
     "vender": "bigdigital",
     "description": "The watchface for watchdrip application",
@@ -250,6 +250,18 @@
         {
           "name": "gts_mini_2",
           "deviceSource": 247
+        },
+        {
+          "name": "trex3",
+          "deviceSource": 8716547
+        },
+        {
+          "name": "trex3_1",
+          "deviceSource": 8716544
+        },
+        {
+          "name": "trex3_2",
+          "deviceSource": 8716545
         }
       ],
       "designWidth": 480
