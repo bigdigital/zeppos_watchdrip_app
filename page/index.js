@@ -339,7 +339,6 @@ class Watchdrip {
     fetch_page_local() {
         debug.log("fetch_page");
         hmUI.setStatusBarVisible(false);
-        hmSetting.setBrightScreen(999);
         this.progressWidget = hmUI.createWidget(hmUI.widget.IMG, IMG_LOADING_PROGRESS);
         this.progressAngle = 0;
         this.stopLoader();
@@ -348,12 +347,6 @@ class Watchdrip {
     }
 
     hide_page() {
-        hmApp.setScreenKeep(false);
-        //hmSetting.setBrightScreenCancel();
-        hmSetting.setBrightScreen(1)
-        hmSetting.setScreenOff();
-        //hmApp.goBack();
-        //hmApp.exit();
         hmApp.gotoHome();
     }
 
@@ -386,6 +379,7 @@ class Watchdrip {
             this.startLoader();
             if (this.intervalWatchdog === null) {
                 this.intervalWatchdog = this.globalNS.setTimeout(() => {
+                    this.stopLoader();
                     this.handleGoBack();
                 }, 5000);
             }
