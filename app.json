@@ -6,7 +6,7 @@
     "appType": "app",
     "version": {
       "code": 3,
-      "name": "2.0.3"
+      "name": "2.0.4"
     },
     "vender": "bigdigital",
     "description": "The watchface for watchdrip application",

@@ -545,13 +545,14 @@ class Watchdrip {
     }
 
     createWatchdripDir() {
-        let systemInfo;
+        let osVersion;
         try { //create dir for old firmwares
-            systemInfo = hmSetting.getSystemInfo();
+            let systemInfo = hmSetting.getSystemInfo();
+            osVersion = Number(systemInfo.osVersion)
         } catch (e) {
-            systemInfo.osVersion = 1;
+            osVersion = 1;
         }
-        if (Number(systemInfo.osVersion) < 3) {
+        if (osVersion < 3) {
             let dir = new Path("full", WF_DIR);
             if (!dir.exists()) {
                 dir.mkdir();
