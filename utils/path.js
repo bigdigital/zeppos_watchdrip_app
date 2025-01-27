@@ -55,7 +55,12 @@ export class Path {
 
     stat() {
         if (this.scope == "data") {
-            return hmFS.stat(this.relativePath);
+            if (this.appid) {
+                return hmFS.stat(this.relativePath, {appid: this.appid});
+            }
+            else {
+                return hmFS.stat(this.relativePath);
+            }
         } else {
             return hmFS.stat_asset(this.relativePath);
         }
@@ -77,8 +82,13 @@ export class Path {
     }
 
     open(flags) {
+        //console.log("open " + this.relativePath + " appid " + this.appid);
         if (this.scope === "data") {
-        this._f = hmFS.open(this.relativePath, flags);
+            if (this.appid) {
+                this._f = hmFS.open(this.relativePath, flags, {appid: this.appid});
+            } else {
+                this._f = hmFS.open(this.relativePath, flags);
+            }
         } else {
             this._f = hmFS.open_asset(this.relativePath, flags);
         }
