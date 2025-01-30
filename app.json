@@ -6,7 +6,7 @@
     "appType": "app",
     "version": {
       "code": 3,
-      "name": "2.0.4"
+      "name": "2.0.5"
     },
     "vender": "bigdigital",
     "description": "The watchface for watchdrip application",
@@ -134,7 +134,23 @@
         {
           "name": "active2",
           "deviceSource": 8323329
-        },	
+        },
+        {
+          "name": "active2_1",
+          "deviceSource": 8913152
+        },
+        {
+          "name": "active2_2",
+          "deviceSource": 8913153
+        },
+        {
+          "name": "active2_3",
+          "deviceSource": 8913155
+        },
+        {
+          "name": "active2_4",
+          "deviceSource": 8913159
+        },
         {
           "name": "gts4",
           "deviceSource": 7995648

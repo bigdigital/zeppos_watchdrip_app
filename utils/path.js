@@ -59,7 +59,7 @@ export class Path {
                 return hmFS.stat(this.relativePath, {appid: this.appid});
             }
             else {
-                return hmFS.stat(this.relativePath);
+            return hmFS.stat(this.relativePath);
             }
         } else {
             return hmFS.stat_asset(this.relativePath);
@@ -87,7 +87,7 @@ export class Path {
             if (this.appid) {
                 this._f = hmFS.open(this.relativePath, flags, {appid: this.appid});
             } else {
-                this._f = hmFS.open(this.relativePath, flags);
+        this._f = hmFS.open(this.relativePath, flags);
             }
         } else {
             this._f = hmFS.open_asset(this.relativePath, flags);
