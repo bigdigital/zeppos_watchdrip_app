@@ -6,7 +6,7 @@
     "appType": "app",
     "version": {
       "code": 3,
-      "name": "2.0.6"
+      "name": "2.0.7"
     },
     "vender": "bigdigital",
     "description": "The watchface for watchdrip application",
@@ -295,17 +295,65 @@
           "name": "trex3_2",
           "deviceSource": 8716545
         },
-	{          
+	      {          
           "name": "bip6-1",
           "deviceSource": 9765120
         },
-	{          
+	      {          
           "name": "bip6-2",
           "deviceSource": 9765121
         },
-	{          
+        {          
           "name": "bip6-3",
           "deviceSource": 10158337
+        },
+        {          
+          "name": "balance2-1",
+          "deviceSource": 9568512
+        },
+        {          
+          "name": "balance2-2",
+          "deviceSource": 9568513
+        },
+        {          
+          "name": "balance2-3",
+          "deviceSource": 9568515
+        },
+        {          
+          "name": "balance2xt-1",
+          "deviceSource": 10486019
+        },
+        {          
+          "name": "balance2xt-2",
+          "deviceSource": 10486017
+        },
+        {          
+          "name": "balance2xt-3",
+          "deviceSource": 10486016
+        },
+        {          
+          "name": "trex3pro-1",
+          "deviceSource": 10682624
+        },
+        {          
+          "name": "trex3pro-2",
+          "deviceSource": 10682625
+        },
+        {          
+          "name": "trex3pro-3",
+          "deviceSource": 10682627
+        },
+        {          
+          "name": "trex3pro-4",
+          "deviceSource": 10551555
+        },
+        {          
+          "name": "trex3pro-5",
+          "deviceSource": 10551553
+        },
+        {          
+          "name": "trex3pro-6",
+          "deviceSource": 10551552
         }
       ],
       "designWidth": 480
