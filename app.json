@@ -354,6 +354,14 @@
         {          
           "name": "trex3pro-6",
           "deviceSource": 10551552
+        },
+        {
+          "name": "ActiveMax_1",
+          "deviceSource": 10813699
+        },
+        {
+          "name": "ActiveMax_2",
+          "deviceSource": 10813697
         }
       ],
       "designWidth": 480
